@@ -6,6 +6,7 @@ import {
   advance,
   describeSchedule,
   dueOccurrences,
+  monthlyEquivalentCents,
   nextOccurrence,
   ordinal,
   type Frequency,
@@ -134,5 +135,23 @@ describe('dueOccurrences', () => {
       assert.equal(run.dues.length, 58); // Jan 2022 to Oct 2026
       assert.equal(run.dues[0], d(2022, 1, 1, 9));
     });
+  });
+});
+
+describe('monthlyEquivalentCents', () => {
+  const item = (frequency: Frequency, amountCents: number, paused = false) => ({ frequency, amountCents, paused });
+
+  it('adds up monthly items as they are', () => {
+    assert.equal(monthlyEquivalentCents([item('monthly', 50000), item('monthly', 1299)]), 51299);
+  });
+
+  it('counts a weekly item as 52/12 payments a month', () => {
+    assert.equal(monthlyEquivalentCents([item('weekly', 1200)]), 5200);
+    assert.equal(monthlyEquivalentCents([item('weekly', 1000)]), 4333);
+  });
+
+  it('ignores paused items and handles an empty list', () => {
+    assert.equal(monthlyEquivalentCents([item('monthly', 50000, true), item('weekly', 1200, true)]), 0);
+    assert.equal(monthlyEquivalentCents([]), 0);
   });
 });

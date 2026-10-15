@@ -11,7 +11,7 @@ device in SQLite. There is no account, server or sync.
 - **History** groups expenses by day, with a month picker, monthly total, a daily/monthly spending chart, a category breakdown and search across all months.
 - **Edit** any expense: change the amount, note, category or date (handy for backfilling), or delete it.
 - **Monthly budget** with a progress bar and a per-day allowance for the rest of the month.
-- **Recurring expenses** (weekly or monthly) are logged automatically on the due day, including days the app wasn't opened. Tap one to edit it, pause it (resuming never back-logs the paused days) or stop it.
+- **Recurring expenses** (weekly or monthly) are logged automatically on the due day, including days the app wasn't opened. They live on their own screen (Settings → Recurring expenses → Manage), which shows how many are active and the rough monthly total; tap one to edit it, pause it (resuming never back-logs the paused days) or stop it.
 - **Custom categories**: add your own, remove the ones you don't use.
 - **Currency**: pick a symbol (or none) in Settings.
 - **CSV export** of all expenses as a real `.csv` file you can save, email or open in Excel/Sheets (with a fallback to plain text if file sharing isn't available). "Export CSV…" asks whether to share the file or save it straight into a folder you pick (Downloads, say), for a copy that stays on the phone.
