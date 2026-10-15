@@ -190,7 +190,7 @@ export function DataSection() {
           accessibilityRole="button"
           onPress={exportCsv}
           style={[styles.action, { backgroundColor: theme.backgroundElement }]}>
-          <ThemedText type="smallBold">Export CSV…</ThemedText>
+          <ThemedText type="smallBold">Export CSV</ThemedText>
         </Pressable>
       </Section>
 
@@ -205,7 +205,7 @@ export function DataSection() {
             onPress: () => void saveCsvToPhone(),
           },
           {
-            label: 'Share…',
+            label: 'Share',
             description: 'Email, Drive, chat and other apps',
             onPress: () => void shareCsv(),
           },

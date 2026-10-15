@@ -107,3 +107,13 @@ export function describeSchedule(item: Pick<Recurring, 'frequency' | 'day'>): st
     ? `Every ${WEEKDAYS[item.day]}`
     : `Monthly on the ${ordinal(item.day)}`;
 }
+
+/** What the active items cost in a typical month (a weekly item counts as 52/12 payments a month). */
+export function monthlyEquivalentCents(
+  items: Pick<Recurring, 'frequency' | 'amountCents' | 'paused'>[]
+): number {
+  const total = items
+    .filter((item) => !item.paused)
+    .reduce((sum, item) => sum + (item.frequency === 'weekly' ? (item.amountCents * 52) / 12 : item.amountCents), 0);
+  return Math.round(total);
+}
