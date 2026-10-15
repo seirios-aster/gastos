@@ -1,56 +1,47 @@
-# Welcome to your Expo app 👋
+# Gastos
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A simple, private expense tracker for your phone. *Gastos* means "expenses" in Filipino and Spanish.
 
-## Get started
+Built with [Expo](https://expo.dev) (React Native) and Expo Router. Everything is stored on the
+device in SQLite. There is no account, server or sync.
 
-1. Install dependencies
+## Features
 
-   ```bash
-   npm install
-   ```
+- **Today** is the landing screen: log an expense in a few seconds (amount, optional note, category). Each one is stored with its date and time.
+- **History** groups expenses by day, with a month picker, monthly total, a daily/monthly spending chart, a category breakdown and search across all months.
+- **Edit** any expense: change the amount, note, category or date (handy for backfilling), or delete it.
+- **Monthly budget** with a progress bar and a per-day allowance for the rest of the month.
+- **Recurring expenses** (weekly or monthly) are logged automatically on the due day, including days the app wasn't opened.
+- **Custom categories**: add your own, remove the ones you don't use.
+- **Currency**: pick a symbol (or none) in Settings.
+- **CSV export** of all expenses.
 
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+## Run it
 
 ```bash
-npm run reset-project
+npm install
+npx expo start
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+Scan the QR code with [Expo Go](https://expo.dev/go) on your phone (same Wi-Fi as your computer, or use `npx expo start --tunnel`).
 
-### Other setup steps
+## Project layout
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+```
+src/app/          Screens (Expo Router): index.tsx = Today, history.tsx = History
+src/components/   UI pieces, including the edit and settings sheets
+src/context/      ExpensesProvider: loads data and exposes add/update/delete
+src/lib/          Pure logic (money, dates, grouping, budget, recurrence) and the SQLite layer (db.ts)
+```
 
-## Learn more
+The database schema is versioned in `src/lib/db.ts` (`migrate`). When you change the schema, bump
+`SCHEMA_VERSION` and add a new `version < N` block so existing data is upgraded in place.
 
-To learn more about developing your project with Expo, look at the following resources:
+## Checks
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+```bash
+npx tsc --noEmit
+npx expo lint
+```
 
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+Note: `expo-sqlite` is not set up for the web target, so run the app on a phone or emulator.

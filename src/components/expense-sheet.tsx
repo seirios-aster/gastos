@@ -19,7 +19,7 @@ import { useExpenses } from '@/context/expenses-context';
 import { useNow } from '@/hooks/use-now';
 import { useTheme } from '@/hooks/use-theme';
 import { addDays, dayLabel, startOfDay, timeLabel } from '@/lib/dates';
-import type { CategoryId, Expense } from '@/lib/expenses';
+import type { Expense } from '@/lib/expenses';
 import { centsToInput, parseAmountToCents } from '@/lib/money';
 
 type Props = {
@@ -42,7 +42,7 @@ function EditForm({ expense, onClose }: { expense: Expense; onClose: () => void 
   const { currency, updateExpense, deleteExpense } = useExpenses();
   const [amount, setAmount] = useState(centsToInput(expense.amountCents));
   const [title, setTitle] = useState(expense.title);
-  const [category, setCategory] = useState<CategoryId>(expense.category);
+  const [category, setCategory] = useState(expense.category);
   const [createdAt, setCreatedAt] = useState(expense.createdAt);
   const [invalid, setInvalid] = useState(false);
 
@@ -195,7 +195,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   amountRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
-  amountInput: { flex: 1, fontSize: 28, fontWeight: '600' },
+  amountInput: { flex: 1, minWidth: 0, fontSize: 28, fontWeight: '600' },
   currency: { fontSize: 28, lineHeight: 34, fontWeight: '600' },
   dateRow: {
     flexDirection: 'row',

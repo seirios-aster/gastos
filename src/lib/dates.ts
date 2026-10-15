@@ -66,3 +66,18 @@ export function timeLabel(ts: number): string {
 export function monthLabel(ts: number): string {
   return new Date(ts).toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
 }
+
+export function daysInMonth(ts: number): number {
+  const d = new Date(ts);
+  return new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+}
+
+/** "Oct 4" */
+export function shortDateLabel(ts: number): string {
+  return new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+/** "Oct" */
+export function shortMonthLabel(ts: number): string {
+  return new Date(ts).toLocaleDateString(undefined, { month: 'short' });
+}

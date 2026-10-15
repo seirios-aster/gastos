@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { BudgetProgress } from '@/components/budget-progress';
 import { CategoryChips } from '@/components/category-chips';
 import { ExpenseRow } from '@/components/expense-row';
 import { ExpenseSheet } from '@/components/expense-sheet';
@@ -24,22 +25,33 @@ import { useExpenses } from '@/context/expenses-context';
 import { useNow } from '@/hooks/use-now';
 import { useTheme } from '@/hooks/use-theme';
 import { addDays, longDateLabel } from '@/lib/dates';
-import { expensesOnDay, sumCents, type CategoryId, type Expense } from '@/lib/expenses';
+import {
+  expensesInMonth,
+  expensesOnDay,
+  sumCents,
+  type Expense,
+} from '@/lib/expenses';
 import { formatMoney, parseAmountToCents } from '@/lib/money';
 
 export default function TodayScreen() {
   const theme = useTheme();
   const now = useNow();
-  const { expenses, currency, addExpense } = useExpenses();
+  const { expenses, categories, currency, budgetCents, addExpense } = useExpenses();
 
   const [amount, setAmount] = useState('');
   const [title, setTitle] = useState('');
-  const [category, setCategory] = useState<CategoryId>('food');
+  const [chosenCategory, setCategory] = useState('food');
   const [invalid, setInvalid] = useState(false);
   const [editing, setEditing] = useState<Expense | null>(null);
   const [showSettings, setShowSettings] = useState(false);
 
+  // The chosen category may have been deleted in Settings; fall back to the first one.
+  const category = categories.some((c) => c.id === chosenCategory)
+    ? chosenCategory
+    : (categories[0]?.id ?? 'other');
+
   const today = expensesOnDay(expenses, now);
+  const monthSpent = sumCents(expensesInMonth(expenses, now));
   const todayTotal = sumCents(today);
   const yesterdayTotal = sumCents(expensesOnDay(expenses, addDays(now, -1)));
 
@@ -99,6 +111,13 @@ export default function TodayScreen() {
                 {formatMoney(yesterdayTotal, currency)}
               </ThemedText>
             </View>
+
+            <BudgetProgress
+              spentCents={monthSpent}
+              budgetCents={budgetCents}
+              currency={currency}
+              allowanceNow={now}
+            />
 
             <ThemedView type="backgroundElement" style={styles.addCard}>
               <View style={styles.amountRow}>
@@ -203,7 +222,7 @@ const styles = StyleSheet.create({
   },
   amountRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
   amountSymbol: { fontSize: 32, lineHeight: 40, fontWeight: '600' },
-  amountInput: { flex: 1, fontSize: 32, fontWeight: '600', paddingVertical: Spacing.one },
+  amountInput: { flex: 1, minWidth: 0, fontSize: 32, fontWeight: '600', paddingVertical: Spacing.one },
   noteInput: {
     borderRadius: Spacing.three - 4,
     paddingHorizontal: Spacing.three,

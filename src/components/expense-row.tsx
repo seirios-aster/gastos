@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
+import { useExpenses } from '@/context/expenses-context';
 import { timeLabel } from '@/lib/dates';
 import { getCategory, type Expense } from '@/lib/expenses';
 import { formatMoney } from '@/lib/money';
@@ -14,7 +15,8 @@ type Props = {
 };
 
 export function ExpenseRow({ expense, currency, onPress }: Props) {
-  const category = getCategory(expense.category);
+  const { categories } = useExpenses();
+  const category = getCategory(categories, expense.category);
   const title = expense.title || category.label;
 
   return (

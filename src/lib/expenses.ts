@@ -1,16 +1,9 @@
-import { dayKey, dayLabel, isSameMonth } from './dates';
+import { dayKey, dayLabel, daysInMonth, isSameMonth, startOfMonth, addMonths } from './dates';
 
-export type CategoryId =
-  | 'food'
-  | 'groceries'
-  | 'transport'
-  | 'bills'
-  | 'shopping'
-  | 'health'
-  | 'fun'
-  | 'other';
+export type Category = { id: string; label: string; emoji: string };
 
-export const CATEGORIES: { id: CategoryId; label: string; emoji: string }[] = [
+/** Seeded into the database the first time the app runs; users can add and remove their own. */
+export const DEFAULT_CATEGORIES: Category[] = [
   { id: 'food', label: 'Food', emoji: '🍔' },
   { id: 'groceries', label: 'Groceries', emoji: '🛒' },
   { id: 'transport', label: 'Transport', emoji: '🚌' },
@@ -21,15 +14,23 @@ export const CATEGORIES: { id: CategoryId; label: string; emoji: string }[] = [
   { id: 'other', label: 'Other', emoji: '✨' },
 ];
 
-export function getCategory(id: string) {
-  return CATEGORIES.find((c) => c.id === id) ?? CATEGORIES[CATEGORIES.length - 1];
+/** The fallback category. It always exists and cannot be deleted. */
+export const OTHER_CATEGORY_ID = 'other';
+
+/** Look a category up by id, falling back to "Other" if it was deleted. */
+export function getCategory(categories: Category[], id: string): Category {
+  return (
+    categories.find((c) => c.id === id) ??
+    categories.find((c) => c.id === OTHER_CATEGORY_ID) ??
+    DEFAULT_CATEGORIES[DEFAULT_CATEGORIES.length - 1]
+  );
 }
 
 export type Expense = {
   id: number;
   title: string;
   amountCents: number;
-  category: CategoryId;
+  category: string;
   /** Unix time in ms when the expense happened. */
   createdAt: number;
 };
@@ -61,6 +62,22 @@ export function expensesOnDay(expenses: Expense[], dayTs: number): Expense[] {
   return expenses.filter((e) => dayKey(e.createdAt) === key);
 }
 
+/** Match the query against the note, the category name and the amount. */
+export function searchExpenses(
+  expenses: Expense[],
+  categories: Category[],
+  query: string
+): Expense[] {
+  const q = query.trim().toLowerCase();
+  if (!q) return expenses;
+  return expenses.filter(
+    (e) =>
+      e.title.toLowerCase().includes(q) ||
+      getCategory(categories, e.category).label.toLowerCase().includes(q) ||
+      (e.amountCents / 100).toFixed(2).includes(q)
+  );
+}
+
 /** Group a newest-first list into per-day sections with totals. */
 export function groupByDay(expenses: Expense[], now: number): DayGroup[] {
   const groups: DayGroup[] = [];
@@ -77,31 +94,55 @@ export function groupByDay(expenses: Expense[], now: number): DayGroup[] {
   return groups;
 }
 
-export function categoryTotals(expenses: Expense[]) {
-  const totals = new Map<CategoryId, number>();
+export function categoryTotals(expenses: Expense[], categories: Category[]) {
+  const totals = new Map<string, number>();
   for (const e of expenses) {
-    totals.set(e.category, (totals.get(e.category) ?? 0) + e.amountCents);
+    const id = getCategory(categories, e.category).id;
+    totals.set(id, (totals.get(id) ?? 0) + e.amountCents);
   }
   const grand = sumCents(expenses);
   return [...totals.entries()]
     .map(([id, totalCents]) => ({
-      category: getCategory(id),
+      category: getCategory(categories, id),
       totalCents,
       share: grand > 0 ? totalCents / grand : 0,
     }))
     .sort((a, b) => b.totalCents - a.totalCents);
 }
 
+/** Total spent on each day of the month containing `monthTs` (index 0 = the 1st). */
+export function dailyTotals(expenses: Expense[], monthTs: number): number[] {
+  const totals = new Array<number>(daysInMonth(monthTs)).fill(0);
+  for (const e of expensesInMonth(expenses, monthTs)) {
+    totals[new Date(e.createdAt).getDate() - 1] += e.amountCents;
+  }
+  return totals;
+}
+
+/** Totals for `count` months ending at (and including) the month of `endMonthTs`, oldest first. */
+export function monthlyTotals(expenses: Expense[], endMonthTs: number, count: number) {
+  const end = startOfMonth(endMonthTs);
+  const result: { monthTs: number; totalCents: number }[] = [];
+  for (let i = count - 1; i >= 0; i--) {
+    const monthTs = addMonths(end, -i);
+    result.push({ monthTs, totalCents: sumCents(expensesInMonth(expenses, monthTs)) });
+  }
+  return result;
+}
+
 function csvCell(value: string): string {
   return /[",\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
 }
 
-export function toCsv(expenses: Expense[]): string {
+export function toCsv(expenses: Expense[], categories: Category[]): string {
   const rows = expenses.map((e) => {
     const d = new Date(e.createdAt);
     const date = dayKey(e.createdAt);
     const time = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-    return [date, time, e.category, csvCell(e.title), (e.amountCents / 100).toFixed(2)].join(',');
+    const category = getCategory(categories, e.category).label;
+    return [date, time, csvCell(category), csvCell(e.title), (e.amountCents / 100).toFixed(2)].join(
+      ','
+    );
   });
   return ['date,time,category,note,amount', ...rows].join('\n');
 }
