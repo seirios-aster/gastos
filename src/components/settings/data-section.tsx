@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { Alert, Pressable, Share, StyleSheet, TextInput } from 'react-native';
 
+import { ActionSheet } from '@/components/action-sheet';
 import { FieldError } from '@/components/field-error';
 import { Section } from '@/components/settings/section';
 import { ThemedText } from '@/components/themed-text';
@@ -17,6 +18,7 @@ export function DataSection() {
   const inputStyle = useInputStyle();
   const { expenses, categories, clearAll, exportBackup, importBackup } = useExpenses();
   const [restoring, setRestoring] = useState(false);
+  const [choosingCsv, setChoosingCsv] = useState(false);
   const [backupText, setBackupText] = useState('');
   const [error, setError] = useState('');
   const importing = useRef(false);
@@ -63,17 +65,7 @@ export function DataSection() {
       Alert.alert('Nothing to export', 'Add an expense first.');
       return;
     }
-    Alert.alert(
-      'Export CSV',
-      'How do you want to export your expenses?',
-      [
-        { text: 'Share (email, Drive, chat…)', onPress: () => void shareCsv() },
-        { text: 'Save to phone', onPress: () => void saveCsvToPhone() },
-        { text: 'Cancel', style: 'cancel' },
-      ],
-      // Android: tapping outside the dialog or pressing Back also cancels.
-      { cancelable: true }
-    );
+    setChoosingCsv(true);
   }
 
   async function shareBackup() {
@@ -201,6 +193,25 @@ export function DataSection() {
           <ThemedText type="smallBold">Export CSV…</ThemedText>
         </Pressable>
       </Section>
+
+      <ActionSheet
+        visible={choosingCsv}
+        title="Export CSV"
+        message="How do you want to export your expenses?"
+        actions={[
+          {
+            label: 'Save to phone',
+            description: 'Pick a folder, like Downloads',
+            onPress: () => void saveCsvToPhone(),
+          },
+          {
+            label: 'Share…',
+            description: 'Email, Drive, chat and other apps',
+            onPress: () => void shareCsv(),
+          },
+        ]}
+        onClose={() => setChoosingCsv(false)}
+      />
 
       <Section
         title="Erase"
