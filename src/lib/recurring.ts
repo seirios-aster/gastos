@@ -55,8 +55,10 @@ export function advance(frequency: Frequency, day: number, due: number): number 
 }
 
 /**
- * Every occurrence that has come due by `now` (e.g. if the app wasn't opened for a few weeks),
- * and the next one still in the future. Capped so bad data can never loop forever.
+ * Every occurrence whose day has arrived by `now` (e.g. if the app wasn't opened for a few weeks),
+ * and the next one still in the future. An item is due from the start of its day, whatever the
+ * time, so one set up for today shows up right away. Today's entry is stamped with the current
+ * time rather than a later 9:00. Capped so bad data can never loop forever.
  */
 export function dueOccurrences(
   item: Pick<Recurring, 'frequency' | 'day' | 'nextDue'>,
@@ -65,8 +67,8 @@ export function dueOccurrences(
 ): { dues: number[]; next: number } {
   const dues: number[] = [];
   let next = item.nextDue;
-  while (next <= now && dues.length < limit) {
-    dues.push(next);
+  while (startOfDay(next) <= startOfDay(now) && dues.length < limit) {
+    dues.push(Math.min(next, now));
     next = advance(item.frequency, item.day, next);
   }
   return { dues, next };
