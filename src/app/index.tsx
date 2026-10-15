@@ -1,98 +1,148 @@
-import * as Device from 'expo-device';
-import { Platform, StyleSheet } from 'react-native';
+import { useState } from 'react';
+import {
+  Button,
+  FlatList,
+  KeyboardAvoidingView,
+  Platform,
+  StyleSheet,
+  TextInput,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AnimatedIcon } from '@/components/animated-icon';
-import { HintRow } from '@/components/hint-row';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 
-function getDevMenuHint() {
-  if (Platform.OS === 'web') {
-    return <ThemedText type="small">use browser devtools</ThemedText>;
-  }
-  if (Device.isDevice) {
-    return (
-      <ThemedText type="small">
-        shake device or press <ThemedText type="code">m</ThemedText> in terminal
-      </ThemedText>
-    );
-  }
-  const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
-  return (
-    <ThemedText type="small">
-      press <ThemedText type="code">{shortcut}</ThemedText>
-    </ThemedText>
-  );
-}
+type Expense = {
+  id: string;
+  title: string;
+  amount: number;
+};
 
 export default function HomeScreen() {
+  const theme = useTheme();
+  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [title, setTitle] = useState('');
+  const [amount, setAmount] = useState('');
+
+  function addExpense() {
+    const value = parseFloat(amount.replace(',', '.'));
+    if (!title.trim() || isNaN(value)) return;
+
+    const newExpense: Expense = {
+      id: Date.now().toString(),
+      title: title.trim(),
+      amount: value,
+    };
+    setExpenses([newExpense, ...expenses]);
+    setTitle('');
+    setAmount('');
+  }
+
+  const total = expenses.reduce((sum, e) => sum + e.amount, 0);
+
+  const inputStyle = [
+    styles.input,
+    { color: theme.text, backgroundColor: theme.backgroundElement },
+  ];
+
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.heroSection}>
-          <AnimatedIcon />
-          <ThemedText type="title" style={styles.title}>
-            Welcome to&nbsp;Expo
+        <KeyboardAvoidingView
+          style={styles.flex}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <ThemedText themeColor="textSecondary" type="small">
+            Total spent
           </ThemedText>
-        </ThemedView>
+          <ThemedText type="subtitle" style={styles.total}>
+            ${total.toFixed(2)}
+          </ThemedText>
 
-        <ThemedText type="code" style={styles.code}>
-          get started
-        </ThemedText>
+          <View style={styles.form}>
+            <TextInput
+              style={inputStyle}
+              value={title}
+              onChangeText={setTitle}
+              placeholder="What did you buy?"
+              placeholderTextColor={theme.textSecondary}
+            />
+            <TextInput
+              style={inputStyle}
+              value={amount}
+              onChangeText={setAmount}
+              placeholder="Amount"
+              placeholderTextColor={theme.textSecondary}
+              keyboardType="decimal-pad"
+              onSubmitEditing={addExpense}
+            />
+            <Button title="Add expense" onPress={addExpense} />
+          </View>
 
-        <ThemedView type="backgroundElement" style={styles.stepContainer}>
-          <HintRow
-            title="Try editing"
-            hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}
+          <FlatList
+            data={expenses}
+            keyExtractor={(item) => item.id}
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={styles.list}
+            renderItem={({ item }) => (
+              <ThemedView type="backgroundElement" style={styles.row}>
+                <ThemedText>{item.title}</ThemedText>
+                <ThemedText>${item.amount.toFixed(2)}</ThemedText>
+              </ThemedView>
+            )}
+            ListEmptyComponent={
+              <ThemedText themeColor="textSecondary" style={styles.empty}>
+                No expenses yet
+              </ThemedText>
+            }
           />
-          <HintRow title="Dev tools" hint={getDevMenuHint()} />
-          <HintRow
-            title="Fresh start"
-            hint={<ThemedText type="code">npm run reset-project</ThemedText>}
-          />
-        </ThemedView>
-
-        {Platform.OS === 'web' && <WebBadge />}
+        </KeyboardAvoidingView>
       </SafeAreaView>
     </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
+  flex: { flex: 1 },
   container: {
     flex: 1,
-    justifyContent: 'center',
     flexDirection: 'row',
+    justifyContent: 'center',
   },
   safeArea: {
     flex: 1,
     paddingHorizontal: Spacing.four,
-    alignItems: 'center',
-    gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
+    paddingTop: Spacing.three,
+    paddingBottom: BottomTabInset,
     maxWidth: MaxContentWidth,
   },
-  heroSection: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.four,
+  total: {
+    marginBottom: Spacing.three,
   },
-  title: {
-    textAlign: 'center',
+  form: {
+    gap: Spacing.two,
+    marginBottom: Spacing.three,
   },
-  code: {
-    textTransform: 'uppercase',
-  },
-  stepContainer: {
-    gap: Spacing.three,
-    alignSelf: 'stretch',
+  input: {
+    borderRadius: Spacing.two,
     paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
+    paddingVertical: Spacing.two + Spacing.one,
+    fontSize: 16,
+  },
+  list: {
+    gap: Spacing.two,
+  },
+  row: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    borderRadius: Spacing.two,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.three,
+  },
+  empty: {
+    textAlign: 'center',
+    marginTop: Spacing.five,
   },
 });
