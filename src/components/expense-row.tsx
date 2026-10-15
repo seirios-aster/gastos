@@ -51,8 +51,8 @@ const styles = StyleSheet.create({
     padding: Spacing.three - 4,
   },
   icon: {
-    width: 40,
-    height: 40,
+    minWidth: 40,
+    minHeight: 40,
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',

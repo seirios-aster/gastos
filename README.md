@@ -15,6 +15,7 @@ device in SQLite. There is no account, server or sync.
 - **Custom categories**: add your own, remove the ones you don't use.
 - **Currency**: pick a symbol (or none) in Settings.
 - **CSV export** of all expenses.
+- **Backup and restore**: "Export backup" shares all expenses, categories and recurring items as JSON text; "Restore from backup" pastes it back and only adds what is missing. Android's automatic cloud backup is turned off (`android.allowBackup` in `app.json`), so this is how you move to a new phone.
 
 ## Run it
 
@@ -42,6 +43,9 @@ The database schema is versioned in `src/lib/db.ts` (`migrate`). When you change
 ```bash
 npx tsc --noEmit
 npx expo lint
+npm test
 ```
+
+`npm test` runs the logic and database tests and needs Node 22.13 or newer (the database tests use `node:sqlite`).
 
 Note: `expo-sqlite` is not set up for the web target, so run the app on a phone or emulator.

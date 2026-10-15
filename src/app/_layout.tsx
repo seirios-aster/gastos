@@ -5,10 +5,17 @@ import { useColorScheme } from 'react-native';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import AppTabs from '@/components/app-tabs';
-import { ExpensesProvider } from '@/context/expenses-context';
+import { UndoToast } from '@/components/undo-toast';
+import { ExpensesProvider, useExpenses } from '@/context/expenses-context';
 import { migrate } from '@/lib/db';
 
 SplashScreen.preventAutoHideAsync();
+
+/** Renders nothing until the data has loaded, so no screen flashes empty; the splash overlay covers the wait. */
+function ReadyGate({ children }: { children: React.ReactNode }) {
+  const { ready } = useExpenses();
+  return ready ? children : null;
+}
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
@@ -17,7 +24,10 @@ export default function TabLayout() {
       <SQLiteProvider databaseName="gastos.db" onInit={migrate}>
         <ExpensesProvider>
           <AnimatedSplashOverlay />
-          <AppTabs />
+          <ReadyGate>
+            <AppTabs />
+            <UndoToast />
+          </ReadyGate>
         </ExpensesProvider>
       </SQLiteProvider>
     </ThemeProvider>

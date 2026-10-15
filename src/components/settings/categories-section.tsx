@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Alert, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
+import { FieldError } from '@/components/field-error';
 import { Section } from '@/components/settings/section';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
@@ -18,8 +19,10 @@ export function CategoriesSection() {
   const [emoji, setEmoji] = useState('');
   const [name, setName] = useState('');
   const [error, setError] = useState('');
+  const adding = useRef(false);
 
   async function add() {
+    if (adding.current) return;
     const label = name.trim();
     if (!label) {
       setError('Give the category a name');
@@ -29,10 +32,18 @@ export function CategoriesSection() {
       setError('You already have a category with that name');
       return;
     }
-    await addCategory(label, emoji.trim() || DEFAULT_EMOJI);
-    setName('');
-    setEmoji('');
-    setError('');
+    adding.current = true;
+    try {
+      await addCategory(label, emoji.trim() || DEFAULT_EMOJI);
+      setName('');
+      setEmoji('');
+      setError('');
+    } catch (failure) {
+      console.warn('Could not add category', failure);
+      Alert.alert('Could not save', 'Something went wrong. Please try again.');
+    } finally {
+      adding.current = false;
+    }
   }
 
   function confirmDelete(id: string, label: string) {
@@ -57,7 +68,8 @@ export function CategoriesSection() {
                 accessibilityRole="button"
                 accessibilityLabel={`Delete ${category.label}`}
                 hitSlop={8}
-                onPress={() => confirmDelete(category.id, category.label)}>
+                onPress={() => confirmDelete(category.id, category.label)}
+                style={styles.deleteButton}>
                 <ThemedText type="small" themeColor="textSecondary">
                   ✕
                 </ThemedText>
@@ -99,11 +111,7 @@ export function CategoriesSection() {
           </ThemedText>
         </Pressable>
       </View>
-      {error ? (
-        <ThemedText type="small" themeColor="danger">
-          {error}
-        </ThemedText>
-      ) : null}
+      {error ? <FieldError>{error}</FieldError> : null}
     </Section>
   );
 }
@@ -118,8 +126,16 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.two,
     borderRadius: 999,
   },
+  // The negative margin lets the 44dp target overlap the chip's padding instead of growing the chip.
+  deleteButton: {
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    margin: -Spacing.two,
+  },
   addRow: { flexDirection: 'row', gap: Spacing.two, alignItems: 'center' },
-  emojiInput: { width: 60, textAlign: 'center' },
+  emojiInput: { minWidth: 60, textAlign: 'center' },
   nameInput: { flex: 1, minWidth: 0 },
   addButton: {
     borderRadius: 12,

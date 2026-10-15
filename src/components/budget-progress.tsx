@@ -40,7 +40,9 @@ export function BudgetProgress({ spentCents, budgetCents, currency, allowanceNow
       accessible
       accessibilityLabel={`Budget: spent ${formatMoney(spentCents, currency)} of ${formatMoney(budgetCents, currency)}. ${message}`}>
       <View style={styles.top}>
-        <ThemedText type="smallBold">Monthly budget</ThemedText>
+        <ThemedText type="smallBold" style={styles.title}>
+          Monthly budget
+        </ThemedText>
         <ThemedText type="small" themeColor="textSecondary">
           {formatMoney(spentCents, currency)} of {formatMoney(budgetCents, currency)}
         </ThemedText>
@@ -57,7 +59,15 @@ export function BudgetProgress({ spentCents, budgetCents, currency, allowanceNow
 
 const styles = StyleSheet.create({
   card: { borderRadius: Spacing.four, padding: Spacing.three, gap: Spacing.two },
-  top: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
+  // Wrap, so on a narrow screen the amounts drop to their own line instead of squeezing the title.
+  top: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+    columnGap: Spacing.two,
+  },
+  title: { flexShrink: 0 },
   track: { height: 10, borderRadius: 5, overflow: 'hidden' },
   fill: { height: 10, borderRadius: 5 },
 });

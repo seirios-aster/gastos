@@ -20,7 +20,9 @@ Gastos has no accounts, no ads, no analytics and no third-party tracking.
 ## Exporting your data
 
 If you use "Export as CSV", the file goes wherever you choose to share it (for example, to an
-email app). That is your choice, and we do not receive it.
+email app). The same applies to "Export backup" text. That is your choice, and we do not receive
+them. Android's automatic cloud backup is turned off for Gastos, so your data is not copied to
+Google Drive or any other service.
 
 ## Deleting your data
 

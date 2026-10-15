@@ -32,7 +32,7 @@ Internal testing has no review wait, and testers install from the real Play Stor
    app, accept the declarations).
 3. Finish the **Dashboard setup tasks** it lists (privacy policy URL, app access, ads: none,
    content rating questionnaire, target audience, Data safety form, store listing).
-   - Data safety: Gastos collects and shares **no data**.
+   - Data safety: Gastos collects and shares **no data**. This stays true because `android.allowBackup` is `false` in `app.json`, so Android Auto Backup never copies the database to Google Drive. Keep it that way, or update the policy and this form.
    - Privacy policy: host `store-assets/privacy-policy.md` somewhere public (for example GitHub Pages or a public gist) and paste the URL.
    - Store listing images are in `store-assets/` (512x512 icon, 1024x500 feature graphic). You also need at least 2 phone screenshots; take them in Expo Go on your phone.
 4. **Testing → Internal testing → Create release**, upload the `.aab` (the first upload must be done by hand in the console), add release notes, roll it out.
