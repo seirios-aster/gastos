@@ -290,7 +290,7 @@ const styles = StyleSheet.create({
   summaryAmount: { fontSize: 40, lineHeight: 48, fontWeight: '700' },
   card: { borderRadius: Spacing.four, padding: Spacing.three, gap: Spacing.three - 4 },
   cardTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  toggle: { width: 150 },
+  toggle: { width: 176 },
   breakdownRow: { gap: Spacing.one + 2 },
   breakdownTop: { flexDirection: 'row', justifyContent: 'space-between' },
   barTrack: { height: 8, borderRadius: 4, overflow: 'hidden' },

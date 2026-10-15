@@ -26,7 +26,11 @@ export function Segmented<T extends string>({ options, value, onChange }: Props<
             accessibilityState={{ selected }}
             onPress={() => onChange(option.value)}
             style={[styles.segment, selected && { backgroundColor: theme.accent }]}>
-            <ThemedText type="smallBold" themeColor={selected ? 'onAccent' : 'text'}>
+            <ThemedText
+              type="smallBold"
+              numberOfLines={1}
+              style={styles.label}
+              themeColor={selected ? 'onAccent' : 'text'}>
               {option.label}
             </ThemedText>
           </Pressable>
@@ -45,8 +49,10 @@ const styles = StyleSheet.create({
   segment: {
     flex: 1,
     alignItems: 'center',
+    justifyContent: 'center',
     borderRadius: 999,
-    paddingVertical: Spacing.one + 2,
-    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.two,
   },
+  label: { textAlign: 'center' },
 });
