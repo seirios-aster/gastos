@@ -15,6 +15,7 @@ import {
   sortExpenses,
   sumCents,
   toCsv,
+  toCsvFile,
   type Category,
   type Expense,
 } from '../expenses';
@@ -155,5 +156,28 @@ describe('toCsv', () => {
     const evil: Category[] = [{ id: 'evil', label: '=cmd', emoji: 'x' }];
     assert.ok(toCsv([mk(1, 100, now, 'evil', 'ok')], evil).includes(",'=cmd,ok,1.00"));
     assert.ok(row('Coffee - oat milk').endsWith(',Coffee - oat milk,12.50'));
+  });
+});
+
+describe('toCsvFile', () => {
+  const rows = [mk(1, 1250, d(2026, 10, 1), 'food', 'Café ₱ lunch'), mk(2, 300, d(2026, 10, 2), 'transport', 'Jeep')];
+
+  it('starts with a byte order mark so Excel reads UTF-8', () => {
+    assert.equal(toCsvFile(rows, cats).charCodeAt(0), 0xfeff);
+  });
+
+  it('uses Windows line endings and ends with one', () => {
+    const text = toCsvFile(rows, cats);
+    assert.ok(text.endsWith('\r\n'));
+    assert.equal(text.split('\r\n').length, 4); // header, 2 rows, empty after the last
+    assert.ok(!text.replace(/\r\n/g, '').includes('\n'));
+  });
+
+  it('has the same content as the plain-text CSV', () => {
+    assert.equal(toCsvFile(rows, cats).slice(1).trimEnd().replace(/\r\n/g, '\n'), toCsv(rows, cats));
+  });
+
+  it('is just a header for no expenses', () => {
+    assert.equal(toCsvFile([], cats), '\uFEFFdate,time,category,note,amount\r\n');
   });
 });

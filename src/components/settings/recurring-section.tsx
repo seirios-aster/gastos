@@ -35,15 +35,21 @@ export function RecurringSection() {
           <Pressable
             key={item.id}
             accessibilityRole="button"
-            accessibilityLabel={`${label}, ${formatMoney(item.amountCents, currency)}, ${describeSchedule(item)}, next ${shortDateLabel(item.nextDue)}`}
+            accessibilityLabel={`${label}, ${formatMoney(item.amountCents, currency)}, ${describeSchedule(item)}, ${item.paused ? 'paused' : `next ${shortDateLabel(item.nextDue)}`}`}
             accessibilityHint="Opens the editor"
             onPress={() => setEditingId(item.id)}
-            style={[styles.item, { backgroundColor: theme.backgroundElement }]}>
+            style={[
+              styles.item,
+              { backgroundColor: theme.backgroundElement },
+              item.paused && styles.paused,
+            ]}>
             <ThemedText style={styles.itemEmoji}>{cat.emoji}</ThemedText>
             <View style={styles.itemText}>
               <ThemedText numberOfLines={1}>{label}</ThemedText>
               <ThemedText type="small" themeColor="textSecondary">
-                {describeSchedule(item)} · next {shortDateLabel(item.nextDue)}
+                {item.paused
+                  ? `Paused · ${describeSchedule(item)}`
+                  : `${describeSchedule(item)} · next ${shortDateLabel(item.nextDue)}`}
               </ThemedText>
             </View>
             <ThemedText type="smallBold">{formatMoney(item.amountCents, currency)}</ThemedText>
@@ -65,7 +71,8 @@ type FormProps = {
 function RecurringForm({ item, onDone }: FormProps) {
   const theme = useTheme();
   const inputStyle = useInputStyle();
-  const { categories, currency, addRecurring, updateRecurring, deleteRecurring } = useExpenses();
+  const { categories, currency, addRecurring, updateRecurring, setRecurringPaused, deleteRecurring } =
+    useExpenses();
 
   const [amount, setAmount] = useState(item ? centsToInput(item.amountCents) : '');
   const [title, setTitle] = useState(item?.title ?? '');
@@ -113,6 +120,20 @@ function RecurringForm({ item, onDone }: FormProps) {
     } catch (failure) {
       console.warn('Could not save recurring expense', failure);
       Alert.alert('Could not save', 'Something went wrong. Please try again.');
+    } finally {
+      saving.current = false;
+    }
+  }
+
+  async function togglePause(current: Recurring) {
+    if (saving.current) return;
+    saving.current = true;
+    try {
+      await setRecurringPaused(current.id, !current.paused);
+      onDone?.();
+    } catch (failure) {
+      console.warn('Could not change the recurring expense', failure);
+      Alert.alert('Could not update', 'Something went wrong. Please try again.');
     } finally {
       saving.current = false;
     }
@@ -225,6 +246,19 @@ function RecurringForm({ item, onDone }: FormProps) {
         </ThemedText>
       </Pressable>
       {item && (
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => void togglePause(item)}
+          style={[styles.pauseButton, { backgroundColor: theme.backgroundSelected }]}>
+          <ThemedText type="smallBold">{item.paused ? 'Resume' : 'Pause'}</ThemedText>
+        </Pressable>
+      )}
+      {item?.paused && (
+        <ThemedText type="small" themeColor="textSecondary">
+          Paused: nothing is logged until you resume. Resuming doesn&apos;t add the days you missed.
+        </ThemedText>
+      )}
+      {item && (
         <View style={styles.editActions}>
           <Pressable
             accessibilityRole="button"
@@ -256,6 +290,7 @@ const styles = StyleSheet.create({
   },
   itemEmoji: { fontSize: 22, lineHeight: 28 },
   itemText: { flex: 1 },
+  paused: { opacity: 0.6 },
   form: { borderRadius: Spacing.three, padding: Spacing.three, gap: Spacing.three - 4 },
   days: { flexDirection: 'row', gap: Spacing.two },
   day: {
@@ -273,6 +308,11 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.three - 2,
   },
   editActions: { flexDirection: 'row', gap: Spacing.two },
+  pauseButton: {
+    alignItems: 'center',
+    borderRadius: 12,
+    paddingVertical: Spacing.three - 2,
+  },
   secondaryButton: {
     flex: 1,
     alignItems: 'center',

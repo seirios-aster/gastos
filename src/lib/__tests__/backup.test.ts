@@ -15,8 +15,8 @@ const expenses: Expense[] = [
   { id: 1, title: '', amountCents: MAX_CENTS, category: 'food', createdAt: t - 86_400_000 },
 ];
 const recurring: Recurring[] = [
-  { id: 1, title: 'Rent', amountCents: 50000, category: 'food', frequency: 'monthly', day: 31, nextDue: t },
-  { id: 2, title: 'Gym', amountCents: 2000, category: 'food', frequency: 'weekly', day: 0, nextDue: t },
+  { id: 1, title: 'Rent', amountCents: 50000, category: 'food', frequency: 'monthly', day: 31, nextDue: t, paused: false },
+  { id: 2, title: 'Gym', amountCents: 2000, category: 'food', frequency: 'weekly', day: 0, nextDue: t, paused: true },
 ];
 
 const valid = (): Backup => JSON.parse(toBackupJson({ expenses, categories, recurring }, t));
@@ -103,6 +103,21 @@ describe('malformed backups', () => {
     for (const id of [0, -1, 1.5, '1', null]) {
       reject({ ...valid(), expenses: [{ ...expenses[0], id }] });
     }
+  });
+
+  it('keeps paused items paused, and treats a backup without the flag as active', () => {
+    const result = parseBackup(JSON.stringify(valid()));
+    assert.ok(result.ok);
+    assert.deepEqual(result.backup.recurring.map((r) => r.paused), [false, true]);
+
+    // A backup made before pausing existed has no `paused` field on its recurring items.
+    const old = valid();
+    for (const item of old.recurring) delete (item as Partial<typeof item>).paused;
+    const older = parseBackup(JSON.stringify(old));
+    assert.ok(older.ok);
+    assert.deepEqual(older.backup.recurring.map((r) => r.paused), [false, false]);
+
+    reject({ ...valid(), recurring: [{ ...recurring[0], paused: 'yes' }] });
   });
 
   it('trims an over-long note instead of rejecting the whole backup', () => {

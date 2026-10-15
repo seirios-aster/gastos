@@ -12,9 +12,11 @@ export type Recurring = {
   day: number;
   /** When the next expense should be logged (ms). */
   nextDue: number;
+  /** A paused item logs nothing; resuming restarts from the next due date after that day. */
+  paused: boolean;
 };
 
-export type RecurringInput = Omit<Recurring, 'id' | 'nextDue'>;
+export type RecurringInput = Omit<Recurring, 'id' | 'nextDue' | 'paused'>;
 
 export const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 

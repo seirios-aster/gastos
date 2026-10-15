@@ -138,7 +138,7 @@ function csvCell(value: string): string {
   return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 
-export function toCsv(expenses: Expense[], categories: Category[]): string {
+function csvLines(expenses: Expense[], categories: Category[]): string[] {
   const rows = expenses.map((e) => {
     const d = new Date(e.createdAt);
     const date = dayKey(e.createdAt);
@@ -148,7 +148,20 @@ export function toCsv(expenses: Expense[], categories: Category[]): string {
       ','
     );
   });
-  return ['date,time,category,note,amount', ...rows].join('\n');
+  return ['date,time,category,note,amount', ...rows];
+}
+
+/** CSV text with plain newlines, for sharing as a message. */
+export function toCsv(expenses: Expense[], categories: Category[]): string {
+  return csvLines(expenses, categories).join('\n');
+}
+
+/**
+ * CSV for a .csv file: Windows line endings and a byte order mark, which is what makes Excel read
+ * accents and currency symbols as UTF-8 instead of garbling them.
+ */
+export function toCsvFile(expenses: Expense[], categories: Category[]): string {
+  return '\uFEFF' + csvLines(expenses, categories).join('\r\n') + '\r\n';
 }
 
 export type Backup = {
@@ -221,13 +234,24 @@ function readExpense(value: unknown): Expense | null {
 
 function readRecurring(value: unknown): Recurring | null {
   if (!isRecord(value)) return null;
-  const { id, title, amountCents, category, frequency, day, nextDue } = value;
+  const { id, title, amountCents, category, frequency, day, nextDue, paused } = value;
   if (!isInt(id, 1, Number.MAX_SAFE_INTEGER) || typeof title !== 'string') return null;
+  // Older backups have no `paused`; that means an active item.
+  if (paused !== undefined && typeof paused !== 'boolean') return null;
   if (!isInt(amountCents, 1, MAX_CENTS) || !isText(category, MAX_SHORT_LENGTH)) return null;
   if (frequency !== 'weekly' && frequency !== 'monthly') return null;
   const [firstDay, lastDay] = frequency === 'weekly' ? [0, 6] : [1, 31];
   if (!isInt(day, firstDay, lastDay) || !isTimestamp(nextDue)) return null;
-  return { id, title: title.slice(0, MAX_TITLE_LENGTH), amountCents, category, frequency, day, nextDue };
+  return {
+    id,
+    title: title.slice(0, MAX_TITLE_LENGTH),
+    amountCents,
+    category,
+    frequency,
+    day,
+    nextDue,
+    paused: paused === true,
+  };
 }
 
 function readList<T>(

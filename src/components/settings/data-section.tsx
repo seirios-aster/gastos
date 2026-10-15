@@ -8,7 +8,8 @@ import { Spacing } from '@/constants/theme';
 import { useExpenses } from '@/context/expenses-context';
 import { useInputStyle } from '@/hooks/use-input-style';
 import { useTheme } from '@/hooks/use-theme';
-import { parseBackup, toCsv } from '@/lib/expenses';
+import { parseBackup, toCsv, toCsvFile } from '@/lib/expenses';
+import { shareTextFile } from '@/lib/share-file';
 
 export function DataSection() {
   const theme = useTheme();
@@ -25,7 +26,19 @@ export function DataSection() {
       return;
     }
     try {
-      await Share.share({ title: 'gastos-expenses.csv', message: toCsv(expenses, categories) });
+      const sharedAsFile = await shareTextFile(
+        'gastos-expenses.csv',
+        toCsvFile(expenses, categories),
+        {
+          mimeType: 'text/csv',
+          uti: 'public.comma-separated-values-text',
+          dialogTitle: 'Export Gastos expenses',
+        }
+      );
+      // No file sharing on this device: send the same data as plain text instead.
+      if (!sharedAsFile) {
+        await Share.share({ title: 'gastos-expenses.csv', message: toCsv(expenses, categories) });
+      }
     } catch (error) {
       // Dismissing the share sheet is not an error, so reaching here is a real failure.
       console.warn('Could not share the CSV', error);
@@ -100,7 +113,7 @@ export function DataSection() {
   return (
     <Section
       title="Your data"
-      hint="Everything is stored on this phone only. Export a backup to keep a copy or move to a new phone, or a CSV to open in a spreadsheet.">
+      hint="Everything is stored on this phone only. Export a backup to keep a copy or move to a new phone, or a CSV file to open in a spreadsheet.">
       <Pressable
         accessibilityRole="button"
         onPress={shareBackup}

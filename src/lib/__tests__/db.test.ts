@@ -18,6 +18,7 @@ import {
   loadRecurring,
   migrate,
   runDueRecurring,
+  setRecurringPausedRow,
   updateExpenseRow,
   updateRecurringRow,
 } from '../db';
@@ -74,7 +75,7 @@ describe('migrate', () => {
     await migrate(db);
     await migrate(db); // idempotent
 
-    assert.equal((raw.prepare('PRAGMA user_version').get() as { user_version: number }).user_version, 2);
+    assert.equal((raw.prepare('PRAGMA user_version').get() as { user_version: number }).user_version, 3);
     const expenses = await loadExpenses(db);
     assert.equal(expenses.length, 1);
     assert.equal(expenses[0].title, 'Old coffee');
@@ -82,6 +83,29 @@ describe('migrate', () => {
     assert.equal(seeded.length, 8);
     assert.equal(seeded[0].id, 'food');
     assert.equal(seeded[seeded.length - 1].id, 'other');
+  });
+
+  it('upgrades a v2 database to v3 without touching its recurring items', async () => {
+    const raw = new DatabaseSync(':memory:');
+    raw.exec(`CREATE TABLE expenses (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL DEFAULT '',
+      amount_cents INTEGER NOT NULL, category TEXT NOT NULL DEFAULT 'other', created_at INTEGER NOT NULL);
+      CREATE TABLE categories (id TEXT PRIMARY KEY, label TEXT NOT NULL, emoji TEXT NOT NULL, sort INTEGER NOT NULL);
+      CREATE TABLE recurring (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL DEFAULT '',
+        amount_cents INTEGER NOT NULL, category TEXT NOT NULL DEFAULT 'other', frequency TEXT NOT NULL,
+        day INTEGER NOT NULL, next_due INTEGER NOT NULL);
+      INSERT INTO categories (id, label, emoji, sort) VALUES ('other', 'Other', '✨', 0);
+      INSERT INTO recurring (title, amount_cents, category, frequency, day, next_due)
+        VALUES ('Rent', 50000, 'other', 'monthly', 1, 5000);
+      PRAGMA user_version = 2;`);
+    const db = makeDb(raw);
+    await migrate(db);
+    await migrate(db); // idempotent
+
+    assert.equal((raw.prepare('PRAGMA user_version').get() as { user_version: number }).user_version, 3);
+    const [rent] = await loadRecurring(db);
+    assert.equal(rent.title, 'Rent');
+    assert.equal(rent.nextDue, 5000);
+    assert.equal(rent.paused, false);
   });
 
   it('sets up a fresh install', async () => {
@@ -301,5 +325,64 @@ describe('updateRecurringRow', () => {
     assert.equal(after.frequency, 'monthly');
     assert.equal(after.day, 20);
     assert.equal(after.nextDue, d(2026, 10, 20, 9));
+  });
+});
+
+describe('pausing recurring items', () => {
+  const monthly = { title: 'Rent', amountCents: 50000, category: 'bills', frequency: 'monthly' as const, day: 1 };
+
+  it('logs nothing while paused', async () => {
+    const { db } = await freshDb();
+    await insertRecurring(db, monthly, d(2026, 8, 20));
+    const [item] = await loadRecurring(db);
+    assert.equal(item.paused, false);
+    await setRecurringPausedRow(db, item.id, true, d(2026, 8, 25));
+    assert.equal((await loadRecurring(db))[0].paused, true);
+    assert.equal(await runDueRecurring(db, d(2026, 11, 20)), false); // months pass, nothing is logged
+    assert.equal((await loadExpenses(db)).length, 0);
+  });
+
+  it('resumes from the next due date without back-logging the paused months', async () => {
+    const { db } = await freshDb();
+    await insertRecurring(db, monthly, d(2026, 8, 20));
+    const [item] = await loadRecurring(db);
+    await setRecurringPausedRow(db, item.id, true, d(2026, 8, 25));
+
+    const resumedOn = d(2026, 11, 20);
+    await setRecurringPausedRow(db, item.id, false, resumedOn);
+    const [resumed] = await loadRecurring(db);
+    assert.equal(resumed.paused, false);
+    assert.equal(resumed.nextDue, d(2026, 12, 1, 9));
+    assert.equal(await runDueRecurring(db, resumedOn), false);       // the paused Sep-Nov are gone
+    assert.equal(await runDueRecurring(db, d(2026, 12, 1, 10)), true);
+    assert.equal((await loadExpenses(db)).length, 1);
+  });
+
+  it('logs right away when resumed on its due day', async () => {
+    const { db } = await freshDb();
+    await insertRecurring(db, monthly, d(2026, 8, 20));
+    const [item] = await loadRecurring(db);
+    await setRecurringPausedRow(db, item.id, true, d(2026, 8, 25));
+    const dueDay = d(2026, 12, 1, 15);
+    await setRecurringPausedRow(db, item.id, false, dueDay);
+    assert.equal(await runDueRecurring(db, dueDay), true);
+  });
+
+  it('carries the paused flag through a restore', async () => {
+    const { db } = await freshDb();
+    const now = d(2026, 10, 16, 14);
+    await importBackupRows(
+      db,
+      backupOf({ recurring: [{ id: 1, ...monthly, nextDue: d(2026, 11, 1, 9), paused: true }] }),
+      now
+    );
+    assert.equal((await loadRecurring(db))[0].paused, true);
+  });
+
+  it('ignores an unknown id', async () => {
+    const { db } = await freshDb();
+    await setRecurringPausedRow(db, 999, false, d(2026, 10, 16));
+    await setRecurringPausedRow(db, 999, true, d(2026, 10, 16));
+    assert.deepEqual(await loadRecurring(db), []);
   });
 });

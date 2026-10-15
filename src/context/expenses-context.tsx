@@ -24,6 +24,7 @@ import {
   loadExpenses,
   loadRecurring,
   runDueRecurring,
+  setRecurringPausedRow,
   updateExpenseRow,
   updateRecurringRow,
 } from '@/lib/db';
@@ -75,6 +76,8 @@ type ExpensesContextValue = {
   deleteCategory: (id: string) => Promise<void>;
   addRecurring: (input: RecurringInput) => Promise<void>;
   updateRecurring: (id: number, input: RecurringInput) => Promise<void>;
+  /** Pause or resume a recurring item. Resuming never back-logs the paused days. */
+  setRecurringPaused: (id: number, paused: boolean) => Promise<void>;
   deleteRecurring: (id: number) => Promise<void>;
   /** All data as a JSON backup that `importBackup` accepts. */
   exportBackup: () => string;
@@ -283,6 +286,16 @@ export function ExpensesProvider({ children }: { children: React.ReactNode }) {
     [db, syncRecurring]
   );
 
+  const setRecurringPaused = useCallback(
+    async (id: number, paused: boolean) => {
+      await setRecurringPausedRow(db, id, paused, Date.now());
+      setRecurring(await loadRecurring(db));
+      // Resuming on the due day logs that day's expense right away.
+      if (!paused) await syncRecurring();
+    },
+    [db, syncRecurring]
+  );
+
   const deleteRecurring = useCallback(
     async (id: number) => {
       await deleteRecurringRow(db, id);
@@ -350,6 +363,7 @@ export function ExpensesProvider({ children }: { children: React.ReactNode }) {
       deleteCategory,
       addRecurring,
       updateRecurring,
+      setRecurringPaused,
       deleteRecurring,
       exportBackup,
       importBackup,
@@ -376,6 +390,7 @@ export function ExpensesProvider({ children }: { children: React.ReactNode }) {
       deleteCategory,
       addRecurring,
       updateRecurring,
+      setRecurringPaused,
       deleteRecurring,
       exportBackup,
       importBackup,

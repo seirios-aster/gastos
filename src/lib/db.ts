@@ -19,7 +19,7 @@ import {
 } from './recurring';
 
 /** Bump this and add a `version < N` block in `migrate` whenever the schema changes. */
-const SCHEMA_VERSION = 2;
+const SCHEMA_VERSION = 3;
 
 type ExpenseRow = {
   id: number;
@@ -39,6 +39,7 @@ type RecurringRow = {
   frequency: string;
   day: number;
   next_due: number;
+  paused: number;
 };
 
 export async function migrate(db: SQLiteDatabase) {
@@ -88,6 +89,10 @@ export async function migrate(db: SQLiteDatabase) {
           index
         );
       }
+    }
+
+    if (version < 3) {
+      await db.execAsync('ALTER TABLE recurring ADD COLUMN paused INTEGER NOT NULL DEFAULT 0;');
     }
 
     await db.execAsync(`PRAGMA user_version = ${SCHEMA_VERSION};`);
@@ -192,12 +197,13 @@ function recurringFromRow(row: RecurringRow): Recurring {
     frequency: row.frequency === 'weekly' ? 'weekly' : 'monthly',
     day: row.day,
     nextDue: row.next_due,
+    paused: row.paused === 1,
   };
 }
 
 export async function loadRecurring(db: SQLiteDatabase): Promise<Recurring[]> {
   const rows = await db.getAllAsync<RecurringRow>(
-    'SELECT id, title, amount_cents, category, frequency, day, next_due FROM recurring ORDER BY next_due, id'
+    'SELECT id, title, amount_cents, category, frequency, day, next_due, paused FROM recurring ORDER BY next_due, id'
   );
   return rows.map(recurringFromRow);
 }
@@ -247,6 +253,32 @@ export async function updateRecurringRow(
   );
 }
 
+/**
+ * Pause or resume a recurring item. Resuming restarts from the next due date on or after today,
+ * so the paused stretch is never back-logged.
+ */
+export async function setRecurringPausedRow(
+  db: SQLiteDatabase,
+  id: number,
+  paused: boolean,
+  now: number
+): Promise<void> {
+  if (paused) {
+    await db.runAsync('UPDATE recurring SET paused = 1 WHERE id = ?', id);
+    return;
+  }
+  const current = await db.getFirstAsync<{ frequency: string; day: number }>(
+    'SELECT frequency, day FROM recurring WHERE id = ?',
+    id
+  );
+  if (!current) return;
+  await db.runAsync(
+    'UPDATE recurring SET paused = 0, next_due = ? WHERE id = ?',
+    nextOccurrence(current.frequency as Frequency, current.day, now),
+    id
+  );
+}
+
 export async function deleteRecurringRow(db: SQLiteDatabase, id: number) {
   await db.runAsync('DELETE FROM recurring WHERE id = ?', id);
 }
@@ -256,7 +288,7 @@ export async function deleteRecurringRow(db: SQLiteDatabase, id: number) {
  * item's next due date forward. Returns true if anything was added.
  */
 export async function runDueRecurring(db: SQLiteDatabase, now: number): Promise<boolean> {
-  const items = await loadRecurring(db);
+  const items = (await loadRecurring(db)).filter((item) => !item.paused);
   let added = false;
 
   for (const item of items) {
@@ -346,8 +378,8 @@ export async function importBackupRows(
         nextDue = advance(item.frequency, item.day, nextDue);
       }
       const result = await db.runAsync(
-        `INSERT INTO recurring (title, amount_cents, category, frequency, day, next_due)
-         SELECT ?, ?, ?, ?, ?, ?
+        `INSERT INTO recurring (title, amount_cents, category, frequency, day, next_due, paused)
+         SELECT ?, ?, ?, ?, ?, ?, ?
          WHERE NOT EXISTS (
            SELECT 1 FROM recurring
            WHERE id <= ? AND title = ? AND amount_cents = ? AND frequency = ? AND day = ?
@@ -359,6 +391,7 @@ export async function importBackupRows(
           item.frequency,
           item.day,
           nextDue,
+          item.paused ? 1 : 0,
           maxRecurringId,
           item.title,
           item.amountCents,
