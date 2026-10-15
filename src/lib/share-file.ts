@@ -1,4 +1,4 @@
-import { File, Paths } from 'expo-file-system';
+import { Directory, File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 
 type ShareFileOptions = {
@@ -30,5 +30,27 @@ export async function shareTextFile(
     UTI: options.uti,
     dialogTitle: options.dialogTitle,
   });
+  return true;
+}
+
+/**
+ * Let the person pick a folder (Downloads, say) and write the file straight into it, so a copy
+ * stays on the phone instead of going to a cloud app. Resolves false if they back out of the
+ * folder picker.
+ */
+export async function saveTextFileToFolder(
+  fileName: string,
+  content: string,
+  mimeType: string
+): Promise<boolean> {
+  let folder: Directory;
+  try {
+    folder = await Directory.pickDirectoryAsync();
+  } catch (error) {
+    // Backing out of the picker rejects with a "cancelled" error on both platforms.
+    if (error instanceof Error && /cancel/i.test(error.message)) return false;
+    throw error;
+  }
+  folder.createFile(fileName, mimeType).write(content);
   return true;
 }
