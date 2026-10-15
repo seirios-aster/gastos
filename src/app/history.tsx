@@ -7,12 +7,15 @@ import { BudgetProgress } from '@/components/budget-progress';
 import { ExpenseRow } from '@/components/expense-row';
 import { ExpenseSheet } from '@/components/expense-sheet';
 import { Segmented } from '@/components/segmented';
+import { SettingsButton } from '@/components/settings-button';
+import { SummaryCard } from '@/components/summary-card';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useExpenses } from '@/context/expenses-context';
 import { useNow } from '@/hooks/use-now';
 import { useTheme } from '@/hooks/use-theme';
+import { projectedMonthCents } from '@/lib/budget';
 import {
   addMonths,
   isSameMonth,
@@ -25,6 +28,7 @@ import {
   categoryTotals,
   dailyTotals,
   expensesInMonth,
+  getCategory,
   groupByDay,
   monthlyTotals,
   searchExpenses,
@@ -45,6 +49,7 @@ export default function HistoryScreen() {
   const [monthTs, setMonthTs] = useState(() => startOfMonth(Date.now()));
   const [query, setQuery] = useState('');
   const [chartMode, setChartMode] = useState<ChartMode>('days');
+  const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const [editing, setEditing] = useState<Expense | null>(null);
 
   const searching = query.trim().length > 0;
@@ -52,15 +57,21 @@ export default function HistoryScreen() {
   const canGoNext = !isCurrentMonth && monthTs < now;
 
   const monthExpenses = useMemo(() => expensesInMonth(expenses, monthTs), [expenses, monthTs]);
-  const shown = useMemo(
-    () => (searching ? searchExpenses(expenses, categories, query) : monthExpenses),
-    [searching, expenses, categories, query, monthExpenses]
-  );
-  const sections = useMemo(() => groupByDay(shown, now), [shown, now]);
   const breakdown = useMemo(
     () => categoryTotals(monthExpenses, categories),
     [monthExpenses, categories]
   );
+  // The filter lapses by itself once its category has no expenses left in the month on screen.
+  const activeFilter = breakdown.some((b) => b.category.id === categoryFilter)
+    ? categoryFilter
+    : null;
+  const shown = useMemo(() => {
+    if (searching) return searchExpenses(expenses, categories, query);
+    return activeFilter
+      ? monthExpenses.filter((e) => getCategory(categories, e.category).id === activeFilter)
+      : monthExpenses;
+  }, [searching, expenses, categories, query, monthExpenses, activeFilter]);
+  const sections = useMemo(() => groupByDay(shown, now), [shown, now]);
   const monthTotal = sumCents(monthExpenses);
 
   const chart = useMemo(() => {
@@ -104,9 +115,14 @@ export default function HistoryScreen() {
     };
   }, [chartMode, expenses, monthTs, now, isCurrentMonth, monthTotal, currency]);
 
+  const projected = isCurrentMonth ? projectedMonthCents(monthTotal, now) : null;
+
   const header = (
     <View style={styles.headerContent}>
-      <ThemedText type="subtitle">History</ThemedText>
+      <View style={styles.titleRow}>
+        <ThemedText type="subtitle">History</ThemedText>
+        <SettingsButton />
+      </View>
 
       <View style={styles.searchRow}>
         <TextInput
@@ -120,7 +136,11 @@ export default function HistoryScreen() {
           accessibilityLabel="Search expenses"
         />
         {searching && (
-          <Pressable accessibilityRole="button" hitSlop={10} onPress={() => setQuery('')}>
+          <Pressable
+            accessibilityRole="button"
+            hitSlop={10}
+            onPress={() => setQuery('')}
+            style={styles.clear}>
             <ThemedText type="linkPrimary">Clear</ThemedText>
           </Pressable>
         )}
@@ -138,7 +158,8 @@ export default function HistoryScreen() {
               accessibilityRole="button"
               accessibilityLabel="Previous month"
               hitSlop={12}
-              onPress={() => setMonthTs(addMonths(monthTs, -1))}>
+              onPress={() => setMonthTs(addMonths(monthTs, -1))}
+              style={styles.arrowButton}>
               <ThemedText style={styles.arrow}>‹</ThemedText>
             </Pressable>
             <ThemedText type="smallBold">{monthLabel(monthTs)}</ThemedText>
@@ -147,22 +168,20 @@ export default function HistoryScreen() {
               accessibilityLabel="Next month"
               hitSlop={12}
               disabled={!canGoNext}
-              onPress={() => setMonthTs(addMonths(monthTs, 1))}>
+              onPress={() => setMonthTs(addMonths(monthTs, 1))}
+              style={styles.arrowButton}>
               <ThemedText style={[styles.arrow, !canGoNext && styles.disabled]}>›</ThemedText>
             </Pressable>
           </ThemedView>
 
-          <View style={[styles.summary, { backgroundColor: theme.accent }]}>
-            <ThemedText type="small" themeColor="onAccent" style={styles.dim}>
-              Spent in {monthLabel(monthTs)}
-            </ThemedText>
-            <ThemedText style={styles.summaryAmount} themeColor="onAccent">
-              {formatMoney(monthTotal, currency)}
-            </ThemedText>
-            <ThemedText type="small" themeColor="onAccent" style={styles.dim}>
-              {monthExpenses.length} {monthExpenses.length === 1 ? 'expense' : 'expenses'}
-            </ThemedText>
-          </View>
+          <SummaryCard
+            label={`Spent in ${monthLabel(monthTs)}`}
+            amount={formatMoney(monthTotal, currency)}
+            footer={
+              `${monthExpenses.length} ${monthExpenses.length === 1 ? 'expense' : 'expenses'}` +
+              (projected === null ? '' : ` · On pace for ${formatMoney(projected, currency)}`)
+            }
+          />
 
           <BudgetProgress
             spentCents={monthTotal}
@@ -194,26 +213,41 @@ export default function HistoryScreen() {
           {breakdown.length > 0 && (
             <ThemedView type="backgroundElement" style={styles.card}>
               <ThemedText type="smallBold">By category</ThemedText>
-              {breakdown.map(({ category, totalCents, share }) => (
-                <View key={category.id} style={styles.breakdownRow}>
-                  <View style={styles.breakdownTop}>
-                    <ThemedText type="small">
-                      {category.emoji} {category.label}
-                    </ThemedText>
-                    <ThemedText type="small" themeColor="textSecondary">
-                      {formatMoney(totalCents, currency)} · {Math.round(share * 100)}%
-                    </ThemedText>
-                  </View>
-                  <View style={[styles.barTrack, { backgroundColor: theme.backgroundSelected }]}>
-                    <View
-                      style={[
-                        styles.barFill,
-                        { backgroundColor: theme.accent, width: `${Math.max(share * 100, 2)}%` },
-                      ]}
-                    />
-                  </View>
-                </View>
-              ))}
+              {breakdown.map(({ category, totalCents, share }) => {
+                const selected = category.id === activeFilter;
+                return (
+                  <Pressable
+                    key={category.id}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected }}
+                    accessibilityHint={
+                      selected ? 'Shows all categories' : 'Lists only this category below'
+                    }
+                    onPress={() => setCategoryFilter(selected ? null : category.id)}
+                    style={({ pressed }) => [
+                      styles.breakdownRow,
+                      selected && { backgroundColor: theme.background },
+                      pressed && styles.pressed,
+                    ]}>
+                    <View style={styles.breakdownTop}>
+                      <ThemedText type="small">
+                        {category.emoji} {category.label}
+                      </ThemedText>
+                      <ThemedText type="small" themeColor="textSecondary">
+                        {formatMoney(totalCents, currency)} · {Math.round(share * 100)}%
+                      </ThemedText>
+                    </View>
+                    <View style={[styles.barTrack, { backgroundColor: theme.backgroundSelected }]}>
+                      <View
+                        style={[
+                          styles.barFill,
+                          { backgroundColor: theme.accent, width: `${Math.max(share * 100, 2)}%` },
+                        ]}
+                      />
+                    </View>
+                  </Pressable>
+                );
+              })}
             </ThemedView>
           )}
         </>
@@ -267,7 +301,9 @@ const styles = StyleSheet.create({
     paddingBottom: BottomTabInset + Spacing.five,
   },
   headerContent: { gap: Spacing.three, paddingBottom: Spacing.two },
+  titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   searchRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
+  clear: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
   search: {
     flex: 1,
     borderRadius: Spacing.three,
@@ -281,17 +317,22 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     borderRadius: Spacing.three,
     paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
+    paddingVertical: Spacing.one,
   },
-  arrow: { fontSize: 28, lineHeight: 34, paddingHorizontal: Spacing.two },
+  arrowButton: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
+  arrow: { fontSize: 28, lineHeight: 34 },
   disabled: { opacity: 0.25 },
-  summary: { borderRadius: Spacing.four, padding: Spacing.four, gap: Spacing.one },
-  dim: { opacity: 0.85 },
-  summaryAmount: { fontSize: 40, lineHeight: 48, fontWeight: '700' },
   card: { borderRadius: Spacing.four, padding: Spacing.three, gap: Spacing.three - 4 },
   cardTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  toggle: { width: 176 },
-  breakdownRow: { gap: Spacing.one + 2 },
+  toggle: { minWidth: 176 },
+  // The negative margin lets the selected highlight reach past the text without moving it.
+  breakdownRow: {
+    gap: Spacing.one + 2,
+    marginHorizontal: -Spacing.two,
+    padding: Spacing.two,
+    borderRadius: Spacing.three - 4,
+  },
+  pressed: { opacity: 0.8 },
   breakdownTop: { flexDirection: 'row', justifyContent: 'space-between' },
   barTrack: { height: 8, borderRadius: 4, overflow: 'hidden' },
   barFill: { height: 8, borderRadius: 4 },

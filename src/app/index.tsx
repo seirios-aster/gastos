@@ -1,7 +1,7 @@
-import { SymbolView } from 'expo-symbols';
 import * as Haptics from 'expo-haptics';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
+  Alert,
   Keyboard,
   KeyboardAvoidingView,
   Platform,
@@ -17,7 +17,9 @@ import { BudgetProgress } from '@/components/budget-progress';
 import { CategoryChips } from '@/components/category-chips';
 import { ExpenseRow } from '@/components/expense-row';
 import { ExpenseSheet } from '@/components/expense-sheet';
-import { SettingsSheet } from '@/components/settings-sheet';
+import { FieldError } from '@/components/field-error';
+import { SettingsButton } from '@/components/settings-button';
+import { SummaryCard } from '@/components/summary-card';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
@@ -26,6 +28,7 @@ import { useNow } from '@/hooks/use-now';
 import { useTheme } from '@/hooks/use-theme';
 import { addDays, longDateLabel } from '@/lib/dates';
 import {
+  MAX_NOTE_LENGTH,
   expensesInMonth,
   expensesOnDay,
   sumCents,
@@ -36,14 +39,15 @@ import { formatMoney, parseAmountToCents } from '@/lib/money';
 export default function TodayScreen() {
   const theme = useTheme();
   const now = useNow();
-  const { expenses, categories, currency, budgetCents, addExpense } = useExpenses();
+  const { expenses, categories, currency, budgetCents, lastCategory, addExpense, setLastCategory } =
+    useExpenses();
 
   const [amount, setAmount] = useState('');
   const [title, setTitle] = useState('');
-  const [chosenCategory, setCategory] = useState('food');
+  const [chosenCategory, setCategory] = useState(lastCategory || 'food');
   const [invalid, setInvalid] = useState(false);
   const [editing, setEditing] = useState<Expense | null>(null);
-  const [showSettings, setShowSettings] = useState(false);
+  const submitting = useRef(false);
 
   // The chosen category may have been deleted in Settings; fall back to the first one.
   const category = categories.some((c) => c.id === chosenCategory)
@@ -56,17 +60,28 @@ export default function TodayScreen() {
   const yesterdayTotal = sumCents(expensesOnDay(expenses, addDays(now, -1)));
 
   async function submit() {
+    // Return on the keyboard and the button can both fire while the first save is still running.
+    if (submitting.current) return;
     const amountCents = parseAmountToCents(amount);
     if (amountCents === null) {
       setInvalid(true);
       return;
     }
-    await addExpense({ title: title.trim(), amountCents, category, createdAt: Date.now() });
-    setAmount('');
-    setTitle('');
-    setInvalid(false);
-    Keyboard.dismiss();
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    submitting.current = true;
+    try {
+      await addExpense({ title: title.trim(), amountCents, category, createdAt: Date.now() });
+      if (category !== lastCategory) setLastCategory(category);
+      setAmount('');
+      setTitle('');
+      setInvalid(false);
+      Keyboard.dismiss();
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    } catch (error) {
+      console.warn('Could not save the expense', error);
+      Alert.alert('Could not save', 'The expense was not saved. Please try again.');
+    } finally {
+      submitting.current = false;
+    }
   }
 
   return (
@@ -86,31 +101,14 @@ export default function TodayScreen() {
                 </ThemedText>
                 <ThemedText type="subtitle">Today</ThemedText>
               </View>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Settings"
-                hitSlop={12}
-                onPress={() => setShowSettings(true)}>
-                <SymbolView
-                  tintColor={theme.text}
-                  name={{ ios: 'gearshape', android: 'settings', web: 'settings' }}
-                  size={24}
-                />
-              </Pressable>
+              <SettingsButton />
             </View>
 
-            <View style={[styles.summary, { backgroundColor: theme.accent }]}>
-              <ThemedText type="small" themeColor="onAccent" style={styles.dim}>
-                Spent today
-              </ThemedText>
-              <ThemedText style={styles.summaryAmount} themeColor="onAccent">
-                {formatMoney(todayTotal, currency)}
-              </ThemedText>
-              <ThemedText type="small" themeColor="onAccent" style={styles.dim}>
-                {today.length} {today.length === 1 ? 'expense' : 'expenses'} · Yesterday{' '}
-                {formatMoney(yesterdayTotal, currency)}
-              </ThemedText>
-            </View>
+            <SummaryCard
+              label="Spent today"
+              amount={formatMoney(todayTotal, currency)}
+              footer={`${today.length} ${today.length === 1 ? 'expense' : 'expenses'} · Yesterday ${formatMoney(yesterdayTotal, currency)}`}
+            />
 
             <BudgetProgress
               spentCents={monthSpent}
@@ -135,11 +133,7 @@ export default function TodayScreen() {
                   accessibilityLabel="Amount"
                 />
               </View>
-              {invalid && (
-                <ThemedText type="small" themeColor="danger">
-                  Enter an amount greater than 0
-                </ThemedText>
-              )}
+              {invalid && <FieldError>Enter an amount greater than 0</FieldError>}
               <TextInput
                 style={[
                   styles.noteInput,
@@ -148,6 +142,7 @@ export default function TodayScreen() {
                 value={title}
                 onChangeText={setTitle}
                 placeholder="Note (optional)"
+                maxLength={MAX_NOTE_LENGTH}
                 placeholderTextColor={theme.textSecondary}
                 returnKeyType="done"
                 onSubmitEditing={submit}
@@ -188,7 +183,6 @@ export default function TodayScreen() {
       </SafeAreaView>
 
       <ExpenseSheet expense={editing} onClose={() => setEditing(null)} />
-      <SettingsSheet visible={showSettings} onClose={() => setShowSettings(false)} />
     </ThemedView>
   );
 }
@@ -208,13 +202,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  summary: {
-    borderRadius: Spacing.four,
-    padding: Spacing.four,
-    gap: Spacing.one,
-  },
-  dim: { opacity: 0.85 },
-  summaryAmount: { fontSize: 40, lineHeight: 48, fontWeight: '700' },
   addCard: {
     borderRadius: Spacing.four,
     padding: Spacing.three,

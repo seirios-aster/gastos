@@ -47,6 +47,7 @@ export function BarChart({ bars, height = 110, accessibilityLabel }: Props) {
               <ThemedText
                 type="small"
                 themeColor={bar.highlight ? 'text' : 'textSecondary'}
+                maxFontSizeMultiplier={1.3}
                 style={styles.label}>
                 {bar.label}
               </ThemedText>

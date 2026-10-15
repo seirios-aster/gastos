@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   Alert,
   KeyboardAvoidingView,
@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 
 import { CategoryChips } from '@/components/category-chips';
+import { FieldError } from '@/components/field-error';
 import { Sheet } from '@/components/sheet';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -19,7 +20,7 @@ import { useExpenses } from '@/context/expenses-context';
 import { useNow } from '@/hooks/use-now';
 import { useTheme } from '@/hooks/use-theme';
 import { addDays, dayLabel, startOfDay, timeLabel } from '@/lib/dates';
-import type { Expense } from '@/lib/expenses';
+import { MAX_NOTE_LENGTH, type Expense } from '@/lib/expenses';
 import { centsToInput, parseAmountToCents } from '@/lib/money';
 
 type Props = {
@@ -45,6 +46,7 @@ function EditForm({ expense, onClose }: { expense: Expense; onClose: () => void 
   const [category, setCategory] = useState(expense.category);
   const [createdAt, setCreatedAt] = useState(expense.createdAt);
   const [invalid, setInvalid] = useState(false);
+  const saving = useRef(false);
 
   const now = useNow();
   const canGoLater = startOfDay(addDays(createdAt, 1)) <= startOfDay(now);
@@ -55,24 +57,38 @@ function EditForm({ expense, onClose }: { expense: Expense; onClose: () => void 
   ];
 
   async function save() {
+    if (saving.current) return;
     const amountCents = parseAmountToCents(amount);
     if (amountCents === null) {
       setInvalid(true);
       return;
     }
-    await updateExpense(expense.id, { title: title.trim(), amountCents, category, createdAt });
-    onClose();
+    saving.current = true;
+    try {
+      await updateExpense(expense.id, { title: title.trim(), amountCents, category, createdAt });
+      onClose();
+    } catch (error) {
+      console.warn('Could not save expense', error);
+      Alert.alert('Could not save', 'Something went wrong. Please try again.');
+    } finally {
+      saving.current = false;
+    }
   }
 
   function confirmDelete() {
-    Alert.alert('Delete this expense?', 'This cannot be undone.', [
+    Alert.alert('Delete this expense?', 'You can undo this for a few seconds afterwards.', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete',
         style: 'destructive',
         onPress: async () => {
-          await deleteExpense(expense.id);
-          onClose();
+          try {
+            await deleteExpense(expense.id);
+            onClose();
+          } catch (error) {
+            console.warn('Could not delete the expense', error);
+            Alert.alert('Could not delete', 'Please try again.');
+          }
         },
       },
     ]);
@@ -81,7 +97,7 @@ function EditForm({ expense, onClose }: { expense: Expense; onClose: () => void 
   return (
     <KeyboardAvoidingView
       style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
@@ -104,11 +120,7 @@ function EditForm({ expense, onClose }: { expense: Expense; onClose: () => void 
               placeholderTextColor={theme.textSecondary}
             />
           </View>
-          {invalid && (
-            <ThemedText type="small" themeColor="danger">
-              Enter an amount greater than 0
-            </ThemedText>
-          )}
+          {invalid && <FieldError>Enter an amount greater than 0</FieldError>}
         </View>
 
         <View style={styles.field}>
@@ -120,6 +132,7 @@ function EditForm({ expense, onClose }: { expense: Expense; onClose: () => void 
             value={title}
             onChangeText={setTitle}
             placeholder="What was it for?"
+            maxLength={MAX_NOTE_LENGTH}
             placeholderTextColor={theme.textSecondary}
           />
         </View>
@@ -140,6 +153,7 @@ function EditForm({ expense, onClose }: { expense: Expense; onClose: () => void 
               accessibilityRole="button"
               accessibilityLabel="Previous day"
               hitSlop={12}
+              style={styles.arrowButton}
               onPress={() => setCreatedAt(addDays(createdAt, -1))}>
               <ThemedText style={styles.arrow}>‹</ThemedText>
             </Pressable>
@@ -151,6 +165,7 @@ function EditForm({ expense, onClose }: { expense: Expense; onClose: () => void 
               accessibilityLabel="Next day"
               hitSlop={12}
               disabled={!canGoLater}
+              style={styles.arrowButton}
               onPress={() => setCreatedAt(addDays(createdAt, 1))}>
               <ThemedText style={[styles.arrow, !canGoLater && styles.disabled]}>›</ThemedText>
             </Pressable>
@@ -206,7 +221,8 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.two,
   },
   dateText: { flex: 1, textAlign: 'center' },
-  arrow: { fontSize: 28, lineHeight: 34, paddingHorizontal: Spacing.two },
+  arrowButton: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
+  arrow: { fontSize: 28, lineHeight: 34 },
   disabled: { opacity: 0.25 },
   button: {
     alignItems: 'center',

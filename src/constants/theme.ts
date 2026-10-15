@@ -14,10 +14,10 @@ export const Colors = {
     backgroundElement: '#F0F0F3',
     backgroundSelected: '#E0E1E6',
     textSecondary: '#60646C',
-    accent: '#208AEF',
+    accent: '#0A6BD6',
     onAccent: '#ffffff',
-    danger: '#D93025',
-    warning: '#C78500',
+    danger: '#BE1E16',
+    warning: '#855800',
   },
   dark: {
     text: '#ffffff',

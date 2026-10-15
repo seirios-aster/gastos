@@ -19,6 +19,7 @@ export function Sheet({ visible, title, onClose, children }: Props) {
       visible={visible}
       animationType="slide"
       presentationStyle="pageSheet"
+      statusBarTranslucent
       onRequestClose={onClose}>
       <ThemedView style={styles.flex}>
         <SafeAreaView

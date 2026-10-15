@@ -12,9 +12,11 @@ export type Recurring = {
   day: number;
   /** When the next expense should be logged (ms). */
   nextDue: number;
+  /** A paused item logs nothing; resuming restarts from the next due date after that day. */
+  paused: boolean;
 };
 
-export type RecurringInput = Omit<Recurring, 'id' | 'nextDue'>;
+export type RecurringInput = Omit<Recurring, 'id' | 'nextDue' | 'paused'>;
 
 export const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -54,24 +56,44 @@ export function advance(frequency: Frequency, day: number, due: number): number 
   return nextOccurrence(frequency, day, addDays(startOfDay(due), 1));
 }
 
+/** Past this many days, a backlog is a wrong device clock rather than bills that really went unlogged. */
+const BACKLOG_DAYS = 365;
+
+function collectDues(
+  frequency: Frequency,
+  day: number,
+  from: number,
+  now: number,
+  limit: number
+): { dues: number[]; next: number } {
+  const dues: number[] = [];
+  let next = from;
+  while (startOfDay(next) <= startOfDay(now) && dues.length < limit) {
+    dues.push(Math.min(next, now));
+    next = advance(frequency, day, next);
+  }
+  return { dues, next };
+}
+
 /**
  * Every occurrence whose day has arrived by `now` (e.g. if the app wasn't opened for a few weeks),
  * and the next one still in the future. An item is due from the start of its day, whatever the
  * time, so one set up for today shows up right away. Today's entry is stamped with the current
- * time rather than a later 9:00. Capped so bad data can never loop forever.
+ * time rather than a later 9:00. If more than `limit` are due, only the last year is logged and the
+ * rest are skipped, so a wrong clock can't flood the ledger with hundreds of rows.
  */
 export function dueOccurrences(
   item: Pick<Recurring, 'frequency' | 'day' | 'nextDue'>,
   now: number,
   limit = 400
 ): { dues: number[]; next: number } {
-  const dues: number[] = [];
-  let next = item.nextDue;
-  while (startOfDay(next) <= startOfDay(now) && dues.length < limit) {
-    dues.push(Math.min(next, now));
-    next = advance(item.frequency, item.day, next);
+  const { frequency, day } = item;
+  const result = collectDues(frequency, day, item.nextDue, now, limit);
+  if (startOfDay(result.next) <= startOfDay(now)) {
+    const recent = nextOccurrence(frequency, day, addDays(now, -BACKLOG_DAYS));
+    return collectDues(frequency, day, recent, now, limit);
   }
-  return { dues, next };
+  return result;
 }
 
 export function ordinal(n: number): string {
