@@ -21,11 +21,7 @@ export function DataSection() {
   const [error, setError] = useState('');
   const importing = useRef(false);
 
-  async function exportCsv() {
-    if (expenses.length === 0) {
-      Alert.alert('Nothing to export', 'Add an expense first.');
-      return;
-    }
+  async function shareCsv() {
     try {
       const sharedAsFile = await shareTextFile(
         'gastos-expenses.csv',
@@ -48,10 +44,6 @@ export function DataSection() {
   }
 
   async function saveCsvToPhone() {
-    if (expenses.length === 0) {
-      Alert.alert('Nothing to export', 'Add an expense first.');
-      return;
-    }
     try {
       const saved = await saveTextFileToFolder(
         `gastos-expenses-${dayKey(Date.now())}.csv`,
@@ -63,6 +55,25 @@ export function DataSection() {
       console.warn('Could not save the CSV', error);
       Alert.alert('Could not save', 'The file could not be saved to that folder. Try another folder.');
     }
+  }
+
+  /** One CSV button: ask whether to share the file or keep a copy on the phone. */
+  function exportCsv() {
+    if (expenses.length === 0) {
+      Alert.alert('Nothing to export', 'Add an expense first.');
+      return;
+    }
+    Alert.alert(
+      'Export CSV',
+      'How do you want to export your expenses?',
+      [
+        { text: 'Share (email, Drive, chat…)', onPress: () => void shareCsv() },
+        { text: 'Save to phone', onPress: () => void saveCsvToPhone() },
+        { text: 'Cancel', style: 'cancel' },
+      ],
+      // Android: tapping outside the dialog or pressing Back also cancels.
+      { cancelable: true }
+    );
   }
 
   async function shareBackup() {
@@ -130,74 +141,80 @@ export function DataSection() {
   }
 
   return (
-    <Section
-      title="Your data"
-      hint="Everything is stored on this phone only. Export a backup to keep a copy or move to a new phone, or a CSV file to open in a spreadsheet.">
-      <Pressable
-        accessibilityRole="button"
-        onPress={shareBackup}
-        style={[styles.action, { backgroundColor: theme.backgroundElement }]}>
-        <ThemedText type="smallBold">Export backup</ThemedText>
-      </Pressable>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityState={{ expanded: restoring }}
-        onPress={() => setRestoring((open) => !open)}
-        style={[styles.action, { backgroundColor: theme.backgroundElement }]}>
-        <ThemedText type="smallBold">Restore from backup</ThemedText>
-      </Pressable>
-      {restoring && (
-        <>
-          <ThemedText type="small" themeColor="textSecondary">
-            Paste the text of a backup made with “Export backup”. Restoring only adds what is
-            missing on this phone; it never deletes or changes what you already have.
-          </ThemedText>
-          <TextInput
-            style={[inputStyle, styles.backupInput]}
-            value={backupText}
-            onChangeText={(text) => {
-              setBackupText(text);
-              setError('');
-            }}
-            multiline
-            autoCapitalize="none"
-            autoCorrect={false}
-            placeholder="Paste backup here"
-            placeholderTextColor={theme.textSecondary}
-            accessibilityLabel="Backup text"
-          />
-          {error ? <FieldError>{error}</FieldError> : null}
-          <Pressable
-            accessibilityRole="button"
-            onPress={confirmRestore}
-            style={[styles.action, { backgroundColor: theme.accent }]}>
-            <ThemedText type="smallBold" themeColor="onAccent">
-              Restore
+    <>
+      <Section
+        title="Backup"
+        hint="Everything is stored on this phone only. A backup is a full copy (expenses, categories and recurring expenses) to keep safe or move to a new phone.">
+        <Pressable
+          accessibilityRole="button"
+          onPress={shareBackup}
+          style={[styles.action, { backgroundColor: theme.backgroundElement }]}>
+          <ThemedText type="smallBold">Export backup</ThemedText>
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ expanded: restoring }}
+          onPress={() => setRestoring((open) => !open)}
+          style={[styles.action, { backgroundColor: theme.backgroundElement }]}>
+          <ThemedText type="smallBold">Restore from backup</ThemedText>
+        </Pressable>
+        {restoring && (
+          <>
+            <ThemedText type="small" themeColor="textSecondary">
+              Paste the text of a backup made with “Export backup”. Restoring only adds what is
+              missing on this phone; it never deletes or changes what you already have.
             </ThemedText>
-          </Pressable>
-        </>
-      )}
-      <Pressable
-        accessibilityRole="button"
-        onPress={exportCsv}
-        style={[styles.action, { backgroundColor: theme.backgroundElement }]}>
-        <ThemedText type="smallBold">Share CSV file</ThemedText>
-      </Pressable>
-      <Pressable
-        accessibilityRole="button"
-        onPress={saveCsvToPhone}
-        style={[styles.action, { backgroundColor: theme.backgroundElement }]}>
-        <ThemedText type="smallBold">Save CSV to phone</ThemedText>
-      </Pressable>
-      <Pressable
-        accessibilityRole="button"
-        onPress={confirmErase}
-        style={[styles.action, { backgroundColor: theme.backgroundElement }]}>
-        <ThemedText type="smallBold" themeColor="danger">
-          Erase all expenses
-        </ThemedText>
-      </Pressable>
-    </Section>
+            <TextInput
+              style={[inputStyle, styles.backupInput]}
+              value={backupText}
+              onChangeText={(text) => {
+                setBackupText(text);
+                setError('');
+              }}
+              multiline
+              autoCapitalize="none"
+              autoCorrect={false}
+              placeholder="Paste backup here"
+              placeholderTextColor={theme.textSecondary}
+              accessibilityLabel="Backup text"
+            />
+            {error ? <FieldError>{error}</FieldError> : null}
+            <Pressable
+              accessibilityRole="button"
+              onPress={confirmRestore}
+              style={[styles.action, { backgroundColor: theme.accent }]}>
+              <ThemedText type="smallBold" themeColor="onAccent">
+                Restore
+              </ThemedText>
+            </Pressable>
+          </>
+        )}
+      </Section>
+
+      <Section
+        title="Spreadsheet (CSV)"
+        hint="Your expenses as a .csv file for Excel or Google Sheets. Gastos can't restore from a CSV, so use a backup for that.">
+        <Pressable
+          accessibilityRole="button"
+          onPress={exportCsv}
+          style={[styles.action, { backgroundColor: theme.backgroundElement }]}>
+          <ThemedText type="smallBold">Export CSV…</ThemedText>
+        </Pressable>
+      </Section>
+
+      <Section
+        title="Erase"
+        hint="Deletes every expense on this phone. Your categories, recurring expenses and settings are kept.">
+        <Pressable
+          accessibilityRole="button"
+          onPress={confirmErase}
+          style={[styles.action, { backgroundColor: theme.backgroundElement }]}>
+          <ThemedText type="smallBold" themeColor="danger">
+            Erase all expenses
+          </ThemedText>
+        </Pressable>
+      </Section>
+    </>
   );
 }
 
