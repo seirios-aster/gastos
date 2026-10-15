@@ -8,8 +8,9 @@ import { Spacing } from '@/constants/theme';
 import { useExpenses } from '@/context/expenses-context';
 import { useInputStyle } from '@/hooks/use-input-style';
 import { useTheme } from '@/hooks/use-theme';
+import { dayKey } from '@/lib/dates';
 import { parseBackup, toCsv, toCsvFile } from '@/lib/expenses';
-import { shareTextFile } from '@/lib/share-file';
+import { saveTextFileToFolder, shareTextFile } from '@/lib/share-file';
 
 export function DataSection() {
   const theme = useTheme();
@@ -43,6 +44,24 @@ export function DataSection() {
       // Dismissing the share sheet is not an error, so reaching here is a real failure.
       console.warn('Could not share the CSV', error);
       Alert.alert('Could not share', 'The CSV could not be shared. Please try again.');
+    }
+  }
+
+  async function saveCsvToPhone() {
+    if (expenses.length === 0) {
+      Alert.alert('Nothing to export', 'Add an expense first.');
+      return;
+    }
+    try {
+      const saved = await saveTextFileToFolder(
+        `gastos-expenses-${dayKey(Date.now())}.csv`,
+        toCsvFile(expenses, categories),
+        'text/csv'
+      );
+      if (saved) Alert.alert('Saved', 'The CSV file is in the folder you picked.');
+    } catch (error) {
+      console.warn('Could not save the CSV', error);
+      Alert.alert('Could not save', 'The file could not be saved to that folder. Try another folder.');
     }
   }
 
@@ -162,7 +181,13 @@ export function DataSection() {
         accessibilityRole="button"
         onPress={exportCsv}
         style={[styles.action, { backgroundColor: theme.backgroundElement }]}>
-        <ThemedText type="smallBold">Export as CSV</ThemedText>
+        <ThemedText type="smallBold">Share CSV file</ThemedText>
+      </Pressable>
+      <Pressable
+        accessibilityRole="button"
+        onPress={saveCsvToPhone}
+        style={[styles.action, { backgroundColor: theme.backgroundElement }]}>
+        <ThemedText type="smallBold">Save CSV to phone</ThemedText>
       </Pressable>
       <Pressable
         accessibilityRole="button"

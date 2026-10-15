@@ -14,7 +14,7 @@ device in SQLite. There is no account, server or sync.
 - **Recurring expenses** (weekly or monthly) are logged automatically on the due day, including days the app wasn't opened. Tap one to edit it, pause it (resuming never back-logs the paused days) or stop it.
 - **Custom categories**: add your own, remove the ones you don't use.
 - **Currency**: pick a symbol (or none) in Settings.
-- **CSV export** of all expenses as a real `.csv` file you can save, email or open in Excel/Sheets (with a fallback to plain text if file sharing isn't available).
+- **CSV export** of all expenses as a real `.csv` file you can save, email or open in Excel/Sheets (with a fallback to plain text if file sharing isn't available). "Save CSV to phone" writes the same file straight into a folder you pick (Downloads, say) when you want a copy that stays on the phone.
 - **Backup and restore**: "Export backup" shares all expenses, categories and recurring items as JSON text; "Restore from backup" pastes it back and only adds what is missing. Android's automatic cloud backup is turned off (`android.allowBackup` in `app.json`), so this is how you move to a new phone.
 
 ## Run it
