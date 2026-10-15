@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "gastos",
+    "name": "Gastos",
     "slug": "gastos",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -8,7 +8,7 @@
     "scheme": "gastos",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/gastos.icon"
     },
     "android": {
       "adaptiveIcon": {
