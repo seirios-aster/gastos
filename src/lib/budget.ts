@@ -25,3 +25,13 @@ export function dailyAllowanceCents(remainingCents: number, now: number): number
   const daysLeft = daysInMonth(now) - new Date(now).getDate() + 1;
   return Math.floor(remainingCents / daysLeft);
 }
+
+/** Days of the month needed before the pace says anything; earlier projections swing too much. */
+const MIN_PROJECTION_DAY = 3;
+
+/** Where the month ends up if spending continues at the pace so far, or null while it is too early to tell. */
+export function projectedMonthCents(spentCents: number, now: number): number | null {
+  const day = new Date(now).getDate();
+  if (day < MIN_PROJECTION_DAY || spentCents <= 0) return null;
+  return Math.round((spentCents / day) * daysInMonth(now));
+}

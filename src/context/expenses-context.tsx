@@ -16,6 +16,7 @@ import {
   deleteCategoryRow,
   deleteExpenseRow,
   deleteRecurringRow,
+  importBackupRows,
   insertCategory,
   insertExpense,
   insertRecurring,
@@ -24,10 +25,13 @@ import {
   loadRecurring,
   runDueRecurring,
   updateExpenseRow,
+  updateRecurringRow,
 } from '@/lib/db';
 import {
   DEFAULT_CATEGORIES,
+  parseBackup,
   sortExpenses,
+  toBackupJson,
   type Category,
   type Expense,
   type ExpenseInput,
@@ -36,6 +40,14 @@ import type { Recurring, RecurringInput } from '@/lib/recurring';
 
 const CURRENCY_KEY = 'currency';
 const BUDGET_KEY = 'budget_cents';
+const LAST_CATEGORY_KEY = 'last_category';
+
+/** How long the "Undo" offer for a deleted expense stays up. */
+const UNDO_MS = 6000;
+
+type ImportResult =
+  | { ok: true; expenses: number; categories: number; recurring: number }
+  | { ok: false; error: string };
 
 type ExpensesContextValue = {
   expenses: Expense[];
@@ -48,14 +60,25 @@ type ExpensesContextValue = {
   /** Monthly budget in cents; 0 means no budget. */
   budgetCents: number;
   setBudgetCents: (cents: number) => void;
+  /** Category last used to log an expense; empty string if none yet. */
+  lastCategory: string;
+  setLastCategory: (id: string) => void;
   addExpense: (input: ExpenseInput) => Promise<void>;
   updateExpense: (id: number, input: ExpenseInput) => Promise<void>;
   deleteExpense: (id: number) => Promise<void>;
+  /** The expense deleted most recently, kept for a few seconds so it can be undone. */
+  lastDeleted: Expense | null;
+  undoDelete: () => Promise<void>;
+  dismissUndo: () => void;
   clearAll: () => Promise<void>;
   addCategory: (label: string, emoji: string) => Promise<void>;
   deleteCategory: (id: string) => Promise<void>;
   addRecurring: (input: RecurringInput) => Promise<void>;
+  updateRecurring: (id: number, input: RecurringInput) => Promise<void>;
   deleteRecurring: (id: number) => Promise<void>;
+  /** All data as a JSON backup that `importBackup` accepts. */
+  exportBackup: () => string;
+  importBackup: (text: string) => Promise<ImportResult>;
 };
 
 const ExpensesContext = createContext<ExpensesContextValue | null>(null);
@@ -73,22 +96,39 @@ export function ExpensesProvider({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
   const [currency, setCurrencyState] = useState(() => Storage.getItemSync(CURRENCY_KEY) ?? '');
   const [budgetCents, setBudgetState] = useState(readBudget);
+  const [lastCategory, setLastCategoryState] = useState(
+    () => Storage.getItemSync(LAST_CATEGORY_KEY) ?? ''
+  );
+  const [lastDeleted, setLastDeleted] = useState<Expense | null>(null);
+  const undoTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const syncing = useRef(false);
+  const syncAgain = useRef(false);
+  const undoing = useRef(false);
 
   /** Log any recurring expenses that have come due, then refresh what's on screen. */
   const syncRecurring = useCallback(async () => {
-    if (syncing.current) return;
+    // A request that arrives mid-sync (e.g. a new item due today) may have missed the sync's
+    // snapshot of the items, so it runs once more instead of being dropped.
+    if (syncing.current) {
+      syncAgain.current = true;
+      return;
+    }
     syncing.current = true;
     try {
-      const added = await runDueRecurring(db, Date.now());
-      if (added) {
-        const [nextExpenses, nextRecurring] = await Promise.all([
-          loadExpenses(db),
-          loadRecurring(db),
-        ]);
-        setExpenses(nextExpenses);
-        setRecurring(nextRecurring);
-      }
+      do {
+        syncAgain.current = false;
+        const added = await runDueRecurring(db, Date.now());
+        if (added) {
+          const [nextExpenses, nextRecurring] = await Promise.all([
+            loadExpenses(db),
+            loadRecurring(db),
+          ]);
+          setExpenses(nextExpenses);
+          setRecurring(nextRecurring);
+        }
+      } while (syncAgain.current);
+    } catch (error) {
+      console.warn('Could not log recurring expenses', error);
     } finally {
       syncing.current = false;
     }
@@ -97,16 +137,22 @@ export function ExpensesProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const [nextExpenses, nextCategories, nextRecurring] = await Promise.all([
-        loadExpenses(db),
-        loadCategories(db),
-        loadRecurring(db),
-      ]);
-      if (cancelled) return;
-      setExpenses(nextExpenses);
-      setCategories(nextCategories);
-      setRecurring(nextRecurring);
-      setReady(true);
+      try {
+        const [nextExpenses, nextCategories, nextRecurring] = await Promise.all([
+          loadExpenses(db),
+          loadCategories(db),
+          loadRecurring(db),
+        ]);
+        if (cancelled) return;
+        setExpenses(nextExpenses);
+        setCategories(nextCategories);
+        setRecurring(nextRecurring);
+      } catch (error) {
+        console.warn('Could not load data', error);
+      } finally {
+        // Never leave the app waiting on a load that failed.
+        if (!cancelled) setReady(true);
+      }
       await syncRecurring();
     })();
     return () => {
@@ -132,6 +178,13 @@ export function ExpensesProvider({ children }: { children: React.ReactNode }) {
     Storage.setItemSync(BUDGET_KEY, String(value));
   }, []);
 
+  const setLastCategory = useCallback((id: string) => {
+    setLastCategoryState(id);
+    Storage.setItemSync(LAST_CATEGORY_KEY, id);
+  }, []);
+
+  useEffect(() => () => clearTimeout(undoTimer.current), []);
+
   const addExpense = useCallback(
     async (input: ExpenseInput) => {
       const id = await insertExpense(db, input);
@@ -148,22 +201,48 @@ export function ExpensesProvider({ children }: { children: React.ReactNode }) {
     [db]
   );
 
+  const dismissUndo = useCallback(() => {
+    clearTimeout(undoTimer.current);
+    setLastDeleted(null);
+  }, []);
+
   const deleteExpense = useCallback(
     async (id: number) => {
+      const deleted = expenses.find((e) => e.id === id);
       await deleteExpenseRow(db, id);
       setExpenses((prev) => prev.filter((e) => e.id !== id));
+      if (!deleted) return;
+      clearTimeout(undoTimer.current);
+      setLastDeleted(deleted);
+      undoTimer.current = setTimeout(() => setLastDeleted(null), UNDO_MS);
     },
-    [db]
+    [db, expenses]
   );
+
+  const undoDelete = useCallback(async () => {
+    if (!lastDeleted || undoing.current) return;
+    undoing.current = true;
+    try {
+      // Same title, amount, category and date; only the id is new. Hide the toast only after the
+      // re-insert worked, so a failure leaves the offer (and the error) visible.
+      const id = await insertExpense(db, lastDeleted);
+      dismissUndo();
+      setExpenses((prev) => sortExpenses([...prev, { ...lastDeleted, id }]));
+    } finally {
+      undoing.current = false;
+    }
+  }, [db, lastDeleted, dismissUndo]);
 
   const clearAll = useCallback(async () => {
     await deleteAllExpenseRows(db);
     setExpenses([]);
-  }, [db]);
+    dismissUndo();
+  }, [db, dismissUndo]);
 
   const addCategory = useCallback(
     async (label: string, emoji: string) => {
-      const id = `c_${Date.now().toString(36)}`;
+      // The random suffix keeps two categories added in the same millisecond from colliding.
+      const id = `c_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
       await insertCategory(db, { id, label, emoji });
       setCategories(await loadCategories(db));
     },
@@ -195,12 +274,57 @@ export function ExpensesProvider({ children }: { children: React.ReactNode }) {
     [db, syncRecurring]
   );
 
+  const updateRecurring = useCallback(
+    async (id: number, input: RecurringInput) => {
+      await updateRecurringRow(db, id, input, Date.now());
+      setRecurring(await loadRecurring(db));
+      await syncRecurring();
+    },
+    [db, syncRecurring]
+  );
+
   const deleteRecurring = useCallback(
     async (id: number) => {
       await deleteRecurringRow(db, id);
       setRecurring((prev) => prev.filter((r) => r.id !== id));
     },
     [db]
+  );
+
+  const exportBackup = useCallback(
+    () => toBackupJson({ expenses, categories, recurring }, Date.now()),
+    [expenses, categories, recurring]
+  );
+
+  const importBackup = useCallback(
+    async (text: string): Promise<ImportResult> => {
+      const parsed = parseBackup(text);
+      if (!parsed.ok) return parsed;
+
+      // The import is one big transaction; keep the recurring sync from writing in the middle of it.
+      while (syncing.current) await new Promise((resolve) => setTimeout(resolve, 50));
+      syncing.current = true;
+      let counts;
+      try {
+        counts = await importBackupRows(db, parsed.backup);
+      } catch (error) {
+        console.warn('Could not import backup', error);
+        return { ok: false, error: 'Could not save the backup. Nothing was imported.' };
+      } finally {
+        syncing.current = false;
+      }
+      const [nextExpenses, nextCategories, nextRecurring] = await Promise.all([
+        loadExpenses(db),
+        loadCategories(db),
+        loadRecurring(db),
+      ]);
+      setExpenses(nextExpenses);
+      setCategories(nextCategories);
+      setRecurring(nextRecurring);
+      await syncRecurring();
+      return { ok: true, ...counts };
+    },
+    [db, syncRecurring]
   );
 
   const value = useMemo(
@@ -213,14 +337,22 @@ export function ExpensesProvider({ children }: { children: React.ReactNode }) {
       setCurrency,
       budgetCents,
       setBudgetCents,
+      lastCategory,
+      setLastCategory,
       addExpense,
       updateExpense,
       deleteExpense,
+      lastDeleted,
+      undoDelete,
+      dismissUndo,
       clearAll,
       addCategory,
       deleteCategory,
       addRecurring,
+      updateRecurring,
       deleteRecurring,
+      exportBackup,
+      importBackup,
     }),
     [
       expenses,
@@ -231,14 +363,22 @@ export function ExpensesProvider({ children }: { children: React.ReactNode }) {
       setCurrency,
       budgetCents,
       setBudgetCents,
+      lastCategory,
+      setLastCategory,
       addExpense,
       updateExpense,
       deleteExpense,
+      lastDeleted,
+      undoDelete,
+      dismissUndo,
       clearAll,
       addCategory,
       deleteCategory,
       addRecurring,
+      updateRecurring,
       deleteRecurring,
+      exportBackup,
+      importBackup,
     ]
   );
 

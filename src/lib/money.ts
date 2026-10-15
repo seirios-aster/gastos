@@ -1,3 +1,6 @@
+/** About 999 million in major units, far below 2^53 so sums over many rows stay exact. */
+export const MAX_CENTS = 99_999_999_999;
+
 /** Parse what the user typed ("12", "12.5", "12,50", "1,234.50") into integer cents. */
 export function parseAmountToCents(input: string): number | null {
   let text = input.trim().replace(/\s/g, '');
@@ -9,7 +12,7 @@ export function parseAmountToCents(input: string): number | null {
   if (!/^(\d+\.?\d*|\.\d+)$/.test(text)) return null;
 
   const cents = Math.round(parseFloat(text) * 100);
-  return Number.isFinite(cents) && cents > 0 ? cents : null;
+  return cents > 0 && cents <= MAX_CENTS ? cents : null;
 }
 
 /** Format cents with an optional currency symbol, e.g. (1250, "$") -> "$12.50". */

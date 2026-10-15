@@ -1,4 +1,6 @@
 import { dayKey, dayLabel, daysInMonth, isSameMonth, startOfMonth, addMonths } from './dates';
+import { MAX_CENTS } from './money';
+import type { Recurring } from './recurring';
 
 export type Category = { id: string; label: string; emoji: string };
 
@@ -131,7 +133,9 @@ export function monthlyTotals(expenses: Expense[], endMonthTs: number, count: nu
 }
 
 function csvCell(value: string): string {
-  return /[",\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
+  // Spreadsheets run cells starting with these as formulas; a leading quote keeps them text.
+  const text = /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
+  return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 
 export function toCsv(expenses: Expense[], categories: Category[]): string {
@@ -145,4 +149,130 @@ export function toCsv(expenses: Expense[], categories: Category[]): string {
     );
   });
   return ['date,time,category,note,amount', ...rows].join('\n');
+}
+
+export type Backup = {
+  version: 1;
+  exportedAt: number;
+  categories: Category[];
+  expenses: Expense[];
+  recurring: Recurring[];
+};
+
+export function toBackupJson(
+  data: { expenses: Expense[]; categories: Category[]; recurring: Recurring[] },
+  exportedAt: number
+): string {
+  const backup: Backup = {
+    version: 1,
+    exportedAt,
+    categories: data.categories,
+    expenses: data.expenses,
+    recurring: data.recurring,
+  };
+  return JSON.stringify(backup);
+}
+
+const MAX_EXPENSES = 200_000;
+const MAX_CATEGORIES = 500;
+const MAX_RECURRING = 1_000;
+/** Longest note the app lets you type. */
+export const MAX_NOTE_LENGTH = 200;
+/** Backups accept longer notes than the app allows (older data), and trim rather than refuse them. */
+const MAX_TITLE_LENGTH = 2_000;
+const MAX_SHORT_LENGTH = 100;
+/** The latest moment a Date can represent. */
+const MAX_TIMESTAMP = 8.64e15;
+
+class InvalidBackup extends Error {}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isText(value: unknown, maxLength: number, minLength = 1): value is string {
+  return typeof value === 'string' && value.length >= minLength && value.length <= maxLength;
+}
+
+function isInt(value: unknown, min: number, max: number): value is number {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= min && value <= max;
+}
+
+function isTimestamp(value: unknown): value is number {
+  return isInt(value, -MAX_TIMESTAMP, MAX_TIMESTAMP);
+}
+
+function readCategory(value: unknown): Category | null {
+  if (!isRecord(value)) return null;
+  const { id, label, emoji } = value;
+  if (!isText(id, MAX_SHORT_LENGTH) || !isText(label, MAX_SHORT_LENGTH)) return null;
+  if (!isText(emoji, MAX_SHORT_LENGTH)) return null;
+  return { id, label, emoji };
+}
+
+function readExpense(value: unknown): Expense | null {
+  if (!isRecord(value)) return null;
+  const { id, title, amountCents, category, createdAt } = value;
+  if (!isInt(id, 1, Number.MAX_SAFE_INTEGER) || typeof title !== 'string') return null;
+  if (!isInt(amountCents, 1, MAX_CENTS) || !isText(category, MAX_SHORT_LENGTH)) return null;
+  if (!isTimestamp(createdAt)) return null;
+  return { id, title: title.slice(0, MAX_TITLE_LENGTH), amountCents, category, createdAt };
+}
+
+function readRecurring(value: unknown): Recurring | null {
+  if (!isRecord(value)) return null;
+  const { id, title, amountCents, category, frequency, day, nextDue } = value;
+  if (!isInt(id, 1, Number.MAX_SAFE_INTEGER) || typeof title !== 'string') return null;
+  if (!isInt(amountCents, 1, MAX_CENTS) || !isText(category, MAX_SHORT_LENGTH)) return null;
+  if (frequency !== 'weekly' && frequency !== 'monthly') return null;
+  const [firstDay, lastDay] = frequency === 'weekly' ? [0, 6] : [1, 31];
+  if (!isInt(day, firstDay, lastDay) || !isTimestamp(nextDue)) return null;
+  return { id, title: title.slice(0, MAX_TITLE_LENGTH), amountCents, category, frequency, day, nextDue };
+}
+
+function readList<T>(
+  value: unknown,
+  name: string,
+  max: number,
+  read: (item: unknown) => T | null
+): T[] {
+  if (!Array.isArray(value)) throw new InvalidBackup(`The backup has no list of ${name}.`);
+  if (value.length > max) throw new InvalidBackup(`The backup has too many ${name}.`);
+  return value.map((item, index) => {
+    const row = read(item);
+    if (!row) throw new InvalidBackup(`Entry ${index + 1} of ${name} is not valid.`);
+    return row;
+  });
+}
+
+/** Strictly validate backup text; nothing is trusted, and only known fields are kept. */
+export function parseBackup(
+  text: string
+): { ok: true; backup: Backup } | { ok: false; error: string } {
+  let data: unknown;
+  try {
+    data = JSON.parse(text.trim()); // trim also drops a leading byte-order mark
+  } catch {
+    return { ok: false, error: 'This is not a Gastos backup.' };
+  }
+
+  try {
+    if (!isRecord(data)) throw new InvalidBackup('This is not a Gastos backup.');
+    const { version, exportedAt, categories, expenses, recurring } = data;
+    if (version !== 1) throw new InvalidBackup('This backup version is not supported.');
+    if (!isTimestamp(exportedAt)) throw new InvalidBackup('The backup date is not valid.');
+    return {
+      ok: true,
+      backup: {
+        version,
+        exportedAt,
+        categories: readList(categories, 'categories', MAX_CATEGORIES, readCategory),
+        expenses: readList(expenses, 'expenses', MAX_EXPENSES, readExpense),
+        recurring: readList(recurring, 'recurring items', MAX_RECURRING, readRecurring),
+      },
+    };
+  } catch (error) {
+    if (error instanceof InvalidBackup) return { ok: false, error: error.message };
+    throw error;
+  }
 }

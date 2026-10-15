@@ -3,11 +3,14 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 import {
   DEFAULT_CATEGORIES,
   OTHER_CATEGORY_ID,
+  type Backup,
   type Category,
   type Expense,
   type ExpenseInput,
 } from './expenses';
+import { startOfDay } from './dates';
 import {
+  advance,
   dueOccurrences,
   nextOccurrence,
   type Frequency,
@@ -216,6 +219,34 @@ export async function insertRecurring(
   );
 }
 
+export async function updateRecurringRow(
+  db: SQLiteDatabase,
+  id: number,
+  input: RecurringInput,
+  now: number
+): Promise<void> {
+  const current = await db.getFirstAsync<{ frequency: string; day: number }>(
+    'SELECT frequency, day FROM recurring WHERE id = ?',
+    id
+  );
+  if (!current) return;
+  // Only a new schedule moves the due date, so editing the amount never skips or repeats a charge.
+  const scheduleChanged = current.frequency !== input.frequency || current.day !== input.day;
+  const nextDue = scheduleChanged
+    ? nextOccurrence(input.frequency as Frequency, input.day, now)
+    : null;
+  await db.runAsync(
+    'UPDATE recurring SET title = ?, amount_cents = ?, category = ?, frequency = ?, day = ?, next_due = COALESCE(?, next_due) WHERE id = ?',
+    input.title,
+    input.amountCents,
+    input.category,
+    input.frequency,
+    input.day,
+    nextDue,
+    id
+  );
+}
+
 export async function deleteRecurringRow(db: SQLiteDatabase, id: number) {
   await db.runAsync('DELETE FROM recurring WHERE id = ?', id);
 }
@@ -246,4 +277,98 @@ export async function runDueRecurring(db: SQLiteDatabase, now: number): Promise<
     added = true;
   }
   return added;
+}
+
+// ------------------------------------------------------------------ backup
+
+/**
+ * Merge a backup into the database in one transaction, without touching existing rows. Anything
+ * already present is skipped, so importing the same backup twice adds nothing. Expenses and
+ * recurring items get new ids so they can never collide with local ones.
+ */
+export async function importBackupRows(
+  db: SQLiteDatabase,
+  backup: Backup,
+  now = Date.now()
+): Promise<{ expenses: number; categories: number; recurring: number }> {
+  const counts = { expenses: 0, categories: 0, recurring: 0 };
+
+  await db.withTransactionAsync(async () => {
+    for (const category of backup.categories) {
+      const result = await db.runAsync(
+        `INSERT OR IGNORE INTO categories (id, label, emoji, sort)
+         VALUES (?, ?, ?, (SELECT COALESCE(MAX(sort), -1) + 1 FROM categories WHERE id != ?))`,
+        category.id,
+        category.label,
+        category.emoji,
+        OTHER_CATEGORY_ID
+      );
+      if (result.changes === 0) continue;
+      // "Other" stays last, as in insertCategory.
+      await db.runAsync(
+        'UPDATE categories SET sort = sort + 1 WHERE id = ?',
+        OTHER_CATEGORY_ID
+      );
+      counts.categories++;
+    }
+
+    // Rows inserted by this import must not count as "already there", or two identical rows inside
+    // one backup (say, two identical subscriptions) would collapse into one.
+    const maxId = async (table: 'expenses' | 'recurring') =>
+      (await db.getFirstAsync<{ id: number }>(`SELECT COALESCE(MAX(id), 0) AS id FROM ${table}`))
+        ?.id ?? 0;
+    const maxExpenseId = await maxId('expenses');
+    const maxRecurringId = await maxId('recurring');
+
+    // A row pointing at a category this phone doesn't have would be orphaned, so it goes to "Other".
+    const known = new Set((await loadCategories(db)).map((c) => c.id));
+    const categoryOf = (id: string) => (known.has(id) ? id : OTHER_CATEGORY_ID);
+
+    for (const expense of backup.expenses) {
+      const row = [expense.title, expense.amountCents, categoryOf(expense.category), expense.createdAt];
+      const result = await db.runAsync(
+        `INSERT INTO expenses (title, amount_cents, category, created_at)
+         SELECT ?, ?, ?, ?
+         WHERE NOT EXISTS (
+           SELECT 1 FROM expenses
+           WHERE id <= ? AND title = ? AND amount_cents = ? AND category = ? AND created_at = ?
+         )`,
+        [...row, maxExpenseId, ...row]
+      );
+      counts.expenses += result.changes;
+    }
+
+    for (const item of backup.recurring) {
+      // If the item is due today but the backup says it already moved past today's date, the old
+      // phone logged today's expense; the backup carries that expense, so don't log it again.
+      let nextDue = nextOccurrence(item.frequency, item.day, now);
+      if (startOfDay(nextDue) <= startOfDay(now) && item.nextDue > nextDue) {
+        nextDue = advance(item.frequency, item.day, nextDue);
+      }
+      const result = await db.runAsync(
+        `INSERT INTO recurring (title, amount_cents, category, frequency, day, next_due)
+         SELECT ?, ?, ?, ?, ?, ?
+         WHERE NOT EXISTS (
+           SELECT 1 FROM recurring
+           WHERE id <= ? AND title = ? AND amount_cents = ? AND frequency = ? AND day = ?
+         )`,
+        [
+          item.title,
+          item.amountCents,
+          categoryOf(item.category),
+          item.frequency,
+          item.day,
+          nextDue,
+          maxRecurringId,
+          item.title,
+          item.amountCents,
+          item.frequency,
+          item.day,
+        ]
+      );
+      counts.recurring += result.changes;
+    }
+  });
+
+  return counts;
 }
