@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
 import {
+  ARM_TTL_MS,
   CAPTURE_TIMEOUT_MS,
   COVER_TIMEOUT_MS,
   FADE_GRACE_MS,
@@ -381,5 +382,167 @@ describe('when things go wrong', () => {
     const t = new ThemeTransition(w.env);
     t.dispose();
     assert.deepEqual(w.log, []);
+  });
+});
+
+describe('a prepared transition (picture ready before the tap lands)', () => {
+  it('switches the moment the tap arrives, with no second picture', async () => {
+    const w = newWorld();
+    const t = new ThemeTransition(w.env);
+
+    t.prepare(); // finger down
+    await w.resolveCapture('file:///early.jpg');
+    t.coverShown();
+    // Ready and waiting: the theme has not changed and nothing is faded yet.
+    assert.equal(w.theme, 'light');
+    assert.deepEqual(w.log, ['capture', 'cover file:///early.jpg']);
+
+    t.request('dark'); // finger up
+    // No frames to wait for and no new picture: the theme flips right away.
+    assert.equal(w.theme, 'dark');
+    assert.deepEqual(w.log, ['capture', 'cover file:///early.jpg', 'listen dark', 'apply dark']);
+
+    w.emitTheme();
+    w.frames(FRAMES_BEFORE_FADE);
+    assert.equal(w.log.at(-1), 'fade');
+    w.finishFade();
+    assert.deepEqual(w.log.slice(-2), ['uncover', 'release file:///early.jpg']);
+    assert.equal(t.busy, false);
+    assert.equal(w.pendingTimers(), 0);
+  });
+
+  it('carries on normally when the tap lands before the picture is on screen', async () => {
+    const w = newWorld();
+    const t = new ThemeTransition(w.env);
+
+    t.prepare();
+    t.request('dark'); // very quick tap: the picture is not even taken yet
+    assert.equal(w.theme, 'light');
+    assert.equal(w.log.filter((x) => x === 'capture').length, 1);
+
+    await w.resolveCapture('file:///quick.jpg');
+    t.coverShown();
+    w.frames(FRAMES_BEFORE_SWITCH);
+    assert.equal(w.theme, 'dark');
+    w.emitTheme();
+    w.frames(FRAMES_BEFORE_FADE);
+    assert.equal(w.log.at(-1), 'fade');
+    w.finishFade();
+    assert.equal(t.busy, false);
+  });
+
+  it('takes the picture down and leaves the theme alone if no tap follows', async () => {
+    const w = newWorld();
+    const t = new ThemeTransition(w.env);
+
+    t.prepare();
+    await w.resolveCapture('file:///unused.jpg');
+    t.coverShown();
+    w.advance(ARM_TTL_MS + 1);
+
+    assert.equal(w.theme, 'light');
+    assert.equal(w.log.some((x) => x.startsWith('apply')), false);
+    assert.deepEqual(w.log.slice(-2), ['uncover', 'release file:///unused.jpg']);
+    assert.equal(t.busy, false);
+    assert.equal(w.pendingTimers(), 0);
+  });
+
+  it('cancelPrepare takes the picture down at once and a later tap works as normal', async () => {
+    const w = newWorld();
+    const t = new ThemeTransition(w.env);
+
+    t.prepare();
+    await w.resolveCapture('file:///slid-away.jpg');
+    t.coverShown();
+    t.cancelPrepare(); // the finger slid off the button
+    assert.equal(w.cover, null);
+    assert.equal(w.theme, 'light');
+    assert.equal(t.busy, false);
+
+    t.request('dark'); // a fresh tap takes its own picture
+    assert.equal(w.log.filter((x) => x === 'capture').length, 2);
+  });
+
+  it('cancelPrepare does nothing once the tap has landed', async () => {
+    const w = newWorld();
+    const t = new ThemeTransition(w.env);
+
+    t.prepare();
+    await w.resolveCapture('file:///x.jpg');
+    t.coverShown();
+    t.request('dark');
+    t.cancelPrepare();
+    assert.equal(w.theme, 'dark');
+    assert.equal(t.busy, true);
+  });
+
+  it('never changes the theme if the early picture cannot be taken, then taps work normally', async () => {
+    const w = newWorld();
+    const t = new ThemeTransition(w.env);
+
+    t.prepare();
+    await w.rejectCapture();
+    assert.equal(w.theme, 'light');
+    assert.equal(w.log.some((x) => x.startsWith('apply')), false);
+    assert.equal(t.busy, false);
+
+    t.request('dark'); // no picture available now either: instant switch, as before
+    await w.rejectCapture();
+    assert.equal(w.theme, 'dark');
+  });
+
+  it('does not change the theme if a never-tapped picture is too slow to arrive', async () => {
+    const w = newWorld();
+    const t = new ThemeTransition(w.env);
+
+    t.prepare();
+    w.advance(CAPTURE_TIMEOUT_MS + 1);
+    assert.equal(w.theme, 'light');
+    assert.equal(w.log.some((x) => x.startsWith('apply')), false);
+    assert.equal(t.busy, false);
+  });
+
+  it('switches instantly when motion is reduced after preparing, or the theme already matches', async () => {
+    const w = newWorld();
+    const t = new ThemeTransition(w.env);
+
+    t.prepare();
+    await w.resolveCapture('file:///a.jpg');
+    t.coverShown();
+    w.setReduceMotion(true);
+    t.request('dark');
+    assert.equal(w.theme, 'dark');
+    assert.equal(w.cover, null);
+    assert.equal(t.busy, false);
+
+    const same = newWorld();
+    const t2 = new ThemeTransition(same.env);
+    t2.prepare();
+    await same.resolveCapture('file:///b.jpg');
+    t2.coverShown();
+    t2.request('light'); // already light
+    assert.equal(same.cover, null);
+    assert.equal(t2.busy, false);
+  });
+
+  it('ignores prepare while a transition is already running', async () => {
+    const w = newWorld();
+    const t = new ThemeTransition(w.env);
+
+    t.request('dark');
+    t.prepare();
+    assert.equal(w.log.filter((x) => x === 'capture').length, 1);
+  });
+
+  it('is cleaned up (no theme change) when disposed while prepared', async () => {
+    const w = newWorld();
+    const t = new ThemeTransition(w.env);
+
+    t.prepare();
+    await w.resolveCapture('file:///d.jpg');
+    t.coverShown();
+    t.dispose();
+    assert.equal(w.theme, 'light');
+    assert.equal(w.pendingTimers(), 0);
   });
 });
