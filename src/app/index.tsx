@@ -18,6 +18,7 @@ import { CategoryChips } from '@/components/category-chips';
 import { ExpenseRow } from '@/components/expense-row';
 import { ExpenseSheet } from '@/components/expense-sheet';
 import { FieldError } from '@/components/field-error';
+import { QuickAddBar } from '@/components/quick-add-bar';
 import { SettingsButton } from '@/components/settings-button';
 import { SummaryCard } from '@/components/summary-card';
 import { ThemedText } from '@/components/themed-text';
@@ -34,7 +35,8 @@ import {
   sumCents,
   type Expense,
 } from '@/lib/expenses';
-import { formatMoney, parseAmountToCents } from '@/lib/money';
+import { centsToInput, formatMoney, parseAmountToCents } from '@/lib/money';
+import type { Draft } from '@/lib/quick-entry';
 
 export default function TodayScreen() {
   const theme = useTheme();
@@ -58,6 +60,14 @@ export default function TodayScreen() {
   const monthSpent = sumCents(expensesInMonth(expenses, now));
   const todayTotal = sumCents(today);
   const yesterdayTotal = sumCents(expensesOnDay(expenses, addDays(now, -1)));
+
+  /** Fill the form from a spoken or scanned draft; the user still taps Add to confirm. */
+  function applyDraft(draft: Draft) {
+    setAmount(draft.amountCents === null ? '' : centsToInput(draft.amountCents));
+    setTitle(draft.title.slice(0, MAX_NOTE_LENGTH));
+    setCategory(draft.category);
+    setInvalid(false);
+  }
 
   async function submit() {
     // Return on the keyboard and the button can both fire while the first save is still running.
@@ -116,6 +126,8 @@ export default function TodayScreen() {
               currency={currency}
               allowanceNow={now}
             />
+
+            <QuickAddBar onDraft={applyDraft} />
 
             <ThemedView type="backgroundElement" style={styles.addCard}>
               <View style={styles.amountRow}>

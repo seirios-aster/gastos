@@ -34,6 +34,13 @@
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 76
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Gastos uses the camera to scan receipts. Photos stay on your phone.",
+          "microphonePermission": false
+        }
       ]
     ],
     "experiments": {
