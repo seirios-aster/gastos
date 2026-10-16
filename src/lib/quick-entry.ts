@@ -36,20 +36,108 @@ export function guessCategory(text: string, categories: Category[]): string {
   return OTHER_CATEGORY_ID;
 }
 
+/** Number words people say out loud, in English and the Taglish/Tagalog they mix in. */
+const SMALL_NUMBERS: Record<string, number> = {
+  zero: 0, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9,
+  ten: 10, eleven: 11, twelve: 12, thirteen: 13, fourteen: 14, fifteen: 15, sixteen: 16,
+  seventeen: 17, eighteen: 18, nineteen: 19,
+  isa: 1, isang: 1, uno: 1, dalawa: 2, dalawang: 2, dos: 2, tatlo: 3, tatlong: 3, tres: 3,
+  apat: 4, kwatro: 4, lima: 5, limang: 5, singko: 5, anim: 6, sais: 6, pito: 7, pitong: 7,
+  siyete: 7, walo: 8, walong: 8, otso: 8, siyam: 9, nuebe: 9, sampu: 10, sampung: 10, diyes: 10,
+  sandaan: 100, sanlibo: 1000,
+};
+const TENS: Record<string, number> = {
+  twenty: 20, thirty: 30, forty: 40, fourty: 40, fifty: 50, sixty: 60, seventy: 70, eighty: 80,
+  ninety: 90,
+  bente: 20, trenta: 30, kwarenta: 40, singkwenta: 50, sisenta: 60, setenta: 70, otsenta: 80,
+  nobenta: 90, dalawampu: 20, tatlumpu: 30, apatnapu: 40, limampu: 50, animnapu: 60,
+  pitumpu: 70, walumpu: 80, siyamnapu: 90,
+};
+const HUNDRED = new Set(['hundred', 'daan', 'daang']);
+const BIG_SCALES: Record<string, number> = {
+  thousand: 1000, libo: 1000, libong: 1000, million: 1_000_000, milyon: 1_000_000,
+};
+const LINKERS = new Set(['and', 'at', 'na', 'ng', 'nang']);
+
+function isNumberWord(word: string): boolean {
+  return word in SMALL_NUMBERS || word in TENS || HUNDRED.has(word) || word in BIG_SCALES;
+}
+
+/** Value of a run of number words, e.g. ["two","hundred","fifty"] -> 250, ["one","fifty"] -> 150. */
+function wordsValue(words: string[]): number {
+  let total = 0;
+  let current = 0;
+  let lastWasDigitWord = false;
+  for (const word of words) {
+    if (LINKERS.has(word)) continue;
+    if (word in SMALL_NUMBERS || word in TENS) {
+      const value = word in SMALL_NUMBERS ? SMALL_NUMBERS[word] : TENS[word];
+      // "one fifty" is how people say 150.
+      if (lastWasDigitWord && word in TENS && current >= 1 && current <= 9) {
+        current = current * 100 + value;
+      } else {
+        current += value;
+      }
+      lastWasDigitWord = word in SMALL_NUMBERS && value >= 1 && value <= 9;
+    } else if (HUNDRED.has(word)) {
+      current = (current || 1) * 100;
+      lastWasDigitWord = false;
+    } else {
+      total += (current || 1) * BIG_SCALES[word];
+      current = 0;
+      lastWasDigitWord = false;
+    }
+  }
+  return total + current;
+}
+
+/** Replace spoken numbers with digits: "two hundred fifty for dinner" -> "250 for dinner". */
+export function numberWordsToDigits(text: string): string {
+  const tokens = text.split(' ');
+  const lookup = (t: string | undefined) => (t ?? '').toLowerCase().replace(/[.,!?;:]+$/, '');
+  const out: string[] = [];
+
+  let i = 0;
+  while (i < tokens.length) {
+    if (!isNumberWord(lookup(tokens[i]))) {
+      out.push(tokens[i]);
+      i++;
+      continue;
+    }
+    const run: string[] = [];
+    let j = i;
+    while (j < tokens.length) {
+      const word = lookup(tokens[j]);
+      const isLinkerBetween =
+        LINKERS.has(word) && run.length > 0 && isNumberWord(lookup(tokens[j + 1]));
+      if (!isNumberWord(word) && !isLinkerBetween) break;
+      run.push(word);
+      j++;
+    }
+    const trailing = (tokens[j - 1].match(/[.,!?;:]+$/) ?? [''])[0];
+    out.push(`${wordsValue(run)}${trailing}`);
+    i = j;
+  }
+  return out.join(' ');
+}
+
 /**
- * Turn a sentence like "lunch 150 pesos", "spent 1,250.50 on groceries" or "150 for grab"
- * into an amount, a note and a category. The amount is the first number in the sentence.
+ * Turn a sentence like "lunch 150 pesos", "spent 1,250.50 on groceries", "two hundred fifty
+ * for dinner" or "5k rent" into an amount, a note and a category. With several numbers
+ * ("2 coffees 150") the biggest one is the price and the rest stay in the note.
  */
 export function parseSpoken(text: string, categories: Category[]): Draft {
-  const cleaned = text.replace(/\s+/g, ' ').trim();
-  const match = cleaned.match(/\d[\d,]*(?:\.\d+)?|\.\d+/);
+  const cleaned = numberWordsToDigits(text.replace(/\s+/g, ' ').trim());
 
-  let amountCents: number | null = null;
-  let rest = cleaned;
-  if (match) {
-    amountCents = parseAmountToCents(match[0].replace(/,(?=\d{3}\b)/g, ''));
-    rest = cleaned.replace(match[0], ' ');
+  let best: { raw: string; cents: number } | null = null;
+  for (const m of cleaned.matchAll(/(\d[\d,]*(?:\.\d+)?|\.\d+)(\s?k\b)?/gi)) {
+    const digits = m[1].replace(/,(?=\d{3}\b)/g, '');
+    const cents = parseAmountToCents(m[2] ? String(Number(digits) * 1000) : digits);
+    if (cents !== null && (best === null || cents > best.cents)) best = { raw: m[0], cents };
   }
+
+  const amountCents = best?.cents ?? null;
+  const rest = best ? cleaned.replace(best.raw, ' ') : cleaned;
 
   const title = rest
     .replace(CURRENCY_WORDS, ' ')
