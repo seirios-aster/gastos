@@ -19,7 +19,7 @@ import { ExpenseRow } from '@/components/expense-row';
 import { ExpenseSheet } from '@/components/expense-sheet';
 import { FieldError } from '@/components/field-error';
 import { QuickAddBar } from '@/components/quick-add-bar';
-import { SettingsButton } from '@/components/settings-button';
+import { HeaderActions } from '@/components/header-actions';
 import { SummaryCard } from '@/components/summary-card';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -111,7 +111,7 @@ export default function TodayScreen() {
                 </ThemedText>
                 <ThemedText type="subtitle">Today</ThemedText>
               </View>
-              <SettingsButton />
+              <HeaderActions />
             </View>
 
             <SummaryCard

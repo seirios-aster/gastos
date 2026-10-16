@@ -7,7 +7,7 @@ import { BudgetProgress } from '@/components/budget-progress';
 import { ExpenseRow } from '@/components/expense-row';
 import { ExpenseSheet } from '@/components/expense-sheet';
 import { Segmented } from '@/components/segmented';
-import { SettingsButton } from '@/components/settings-button';
+import { HeaderActions } from '@/components/header-actions';
 import { SummaryCard } from '@/components/summary-card';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -121,7 +121,7 @@ export default function HistoryScreen() {
     <View style={styles.headerContent}>
       <View style={styles.titleRow}>
         <ThemedText type="subtitle">History</ThemedText>
-        <SettingsButton />
+        <HeaderActions />
       </View>
 
       <View style={styles.searchRow}>
