@@ -1,14 +1,16 @@
 import { useRef, useState } from 'react';
-import { Alert, Share, StyleSheet, TextInput, View } from 'react-native';
+import { Share, StyleSheet, TextInput, View } from 'react-native';
 
 import { ActionSheet } from '@/components/action-sheet';
 import { Button } from '@/components/button';
 import { FieldError } from '@/components/field-error';
+import { confirm, info } from '@/components/notices';
 import { Section } from '@/components/settings/section';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import { useExpenses } from '@/context/expenses-context';
 import { useInputStyle } from '@/hooks/use-input-style';
+import { useSheetNotice } from '@/hooks/use-sheet-notice';
 import { useTheme } from '@/hooks/use-theme';
 import { dayKey } from '@/lib/dates';
 import { parseBackup, toCsv, toCsvFile } from '@/lib/expenses';
@@ -23,6 +25,8 @@ export function DataSection() {
   const [backupText, setBackupText] = useState('');
   const [error, setError] = useState('');
   const importing = useRef(false);
+  // Results and confirmations use the app's own sheet. A second one, because the CSV choice below is its own.
+  const { notify, sheetProps: noticeProps } = useSheetNotice();
 
   async function shareCsv() {
     try {
@@ -42,7 +46,7 @@ export function DataSection() {
     } catch (error) {
       // Dismissing the share sheet is not an error, so reaching here is a real failure.
       console.warn('Could not share the CSV', error);
-      Alert.alert('Could not share', 'The CSV could not be shared. Please try again.');
+      notify(info('Could not share', 'The CSV could not be shared. Please try again.'));
     }
   }
 
@@ -53,17 +57,17 @@ export function DataSection() {
         toCsvFile(expenses, categories),
         'text/csv'
       );
-      if (saved) Alert.alert('Saved', 'The CSV file is in the folder you picked.');
+      if (saved) notify(info('Saved', 'The CSV file is in the folder you picked.'));
     } catch (error) {
       console.warn('Could not save the CSV', error);
-      Alert.alert('Could not save', 'The file could not be saved to that folder. Try another folder.');
+      notify(info('Could not save', 'The file could not be saved to that folder. Try another folder.'));
     }
   }
 
   /** One CSV button: ask whether to share the file or keep a copy on the phone. */
   function exportCsv() {
     if (expenses.length === 0) {
-      Alert.alert('Nothing to export', 'Add an expense first.');
+      notify(info('Nothing to export', 'Add an expense first.'));
       return;
     }
     setChoosingCsv(true);
@@ -74,9 +78,11 @@ export function DataSection() {
       await Share.share({ title: 'gastos-backup.json', message: exportBackup() });
     } catch (error) {
       console.warn('Could not share the backup', error);
-      Alert.alert(
-        'Could not share the backup',
-        'It may be too large to share as text. Try again, or export a CSV instead.'
+      notify(
+        info(
+          'Could not share the backup',
+          'It may be too large to share as text. Try again, or export a CSV instead.'
+        )
       );
     }
   }
@@ -88,13 +94,13 @@ export function DataSection() {
       return;
     }
     const { expenses: found, categories: foundCategories, recurring } = parsed.backup;
-    Alert.alert(
-      'Restore this backup?',
-      `Expenses: ${found.length}\nCategories: ${foundCategories.length}\nRecurring: ${recurring.length}\n\nRestoring only adds what is missing on this phone. Nothing you already have is deleted or changed.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Restore', onPress: () => void restore() },
-      ]
+    notify(
+      confirm({
+        title: 'Restore this backup?',
+        message: `Expenses: ${found.length}\nCategories: ${foundCategories.length}\nRecurring: ${recurring.length}\n\nRestoring only adds what is missing on this phone. Nothing you already have is deleted or changed.`,
+        confirmLabel: 'Restore',
+        onConfirm: () => void restore(),
+      })
     );
   }
 
@@ -110,9 +116,11 @@ export function DataSection() {
       setBackupText('');
       setError('');
       setRestoring(false);
-      Alert.alert(
-        'Backup restored',
-        `Added ${result.expenses} expenses, ${result.categories} categories and ${result.recurring} recurring expenses. Anything already on this phone was left as it was.`
+      notify(
+        info(
+          'Backup restored',
+          `Added ${result.expenses} expenses, ${result.categories} categories and ${result.recurring} recurring expenses. Anything already on this phone was left as it was.`
+        )
       );
     } catch (failure) {
       console.warn('Could not restore backup', failure);
@@ -123,13 +131,15 @@ export function DataSection() {
   }
 
   function confirmErase() {
-    Alert.alert(
-      'Erase all expenses?',
-      `This permanently deletes all ${expenses.length} expenses from this phone. Your categories, recurring expenses and settings are kept.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Erase expenses', style: 'destructive', onPress: () => void clearAll() },
-      ]
+    notify(
+      confirm({
+        title: 'Erase all expenses?',
+        message: `This permanently deletes all ${expenses.length} expenses from this phone. Your categories, recurring expenses and settings are kept.`,
+        confirmLabel: 'Erase expenses',
+        cancelLabel: 'Keep them',
+        destructive: true,
+        onConfirm: () => void clearAll(),
+      })
     );
   }
 
@@ -195,6 +205,8 @@ export function DataSection() {
         ]}
         onClose={() => setChoosingCsv(false)}
       />
+
+      <ActionSheet {...noticeProps} />
 
       {/* Set apart from the harmless actions above. */}
       <View style={styles.danger}>

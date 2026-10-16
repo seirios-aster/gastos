@@ -18,6 +18,10 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "allowBackup": false,
+      "blockedPermissions": [
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE"
+      ],
       "predictiveBackGestureEnabled": false,
       "package": "com.seiriosaster.gastos"
     },
@@ -40,13 +44,6 @@
           "backgroundColor": "#208AEF",
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 76
-        }
-      ],
-      [
-        "expo-image-picker",
-        {
-          "cameraPermission": "Gastos uses the camera to scan receipts. Photos stay on your phone.",
-          "microphonePermission": false
         }
       ]
     ],

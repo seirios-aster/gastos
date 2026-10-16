@@ -1,13 +1,16 @@
 import { useRef, useState } from 'react';
-import { Alert, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 
+import { ActionSheet } from '@/components/action-sheet';
 import { Button } from '@/components/button';
 import { FieldError } from '@/components/field-error';
+import { confirm, info } from '@/components/notices';
 import { Section } from '@/components/settings/section';
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing, Touch } from '@/constants/theme';
 import { useExpenses } from '@/context/expenses-context';
 import { useInputStyle } from '@/hooks/use-input-style';
+import { useSheetNotice } from '@/hooks/use-sheet-notice';
 import { useTheme } from '@/hooks/use-theme';
 import { OTHER_CATEGORY_ID } from '@/lib/expenses';
 
@@ -21,6 +24,7 @@ export function CategoriesSection() {
   const [name, setName] = useState('');
   const [error, setError] = useState('');
   const adding = useRef(false);
+  const { notify, sheetProps } = useSheetNotice();
 
   async function add() {
     if (adding.current) return;
@@ -41,17 +45,23 @@ export function CategoriesSection() {
       setError('');
     } catch (failure) {
       console.warn('Could not add category', failure);
-      Alert.alert('Could not save', 'Something went wrong. Please try again.');
+      notify(info('Could not save', 'Something went wrong. Please try again.'));
     } finally {
       adding.current = false;
     }
   }
 
   function confirmDelete(id: string, label: string) {
-    Alert.alert(`Delete “${label}”?`, 'Its expenses will move to “Other”.', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => void deleteCategory(id) },
-    ]);
+    notify(
+      confirm({
+        title: `Delete “${label}”?`,
+        message: 'Its expenses will move to “Other”.',
+        confirmLabel: 'Delete',
+        cancelLabel: 'Keep it',
+        destructive: true,
+        onConfirm: () => void deleteCategory(id),
+      })
+    );
   }
 
   return (
@@ -107,6 +117,7 @@ export function CategoriesSection() {
         <Button label="Add" onPress={add} />
       </View>
       {error ? <FieldError>{error}</FieldError> : null}
+      <ActionSheet {...sheetProps} />
     </Section>
   );
 }

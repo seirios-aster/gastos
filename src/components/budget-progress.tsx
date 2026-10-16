@@ -19,23 +19,17 @@ type Props = {
   currency: string;
   /** Pass the current time to also show a per-day allowance (only for the running month). */
   allowanceNow?: number;
-  /**
-   * compact: just the sentence and the bar (Today).
-   * full: "Monthly budget" and "spent of budget" on top, then the bar and the sentence (History).
-   */
-  variant?: 'compact' | 'full';
 };
 
 /**
- * How much of the monthly budget is used. Sits inside a SummaryCard, which gives it its rounded
- * bottom edge. Renders nothing without a budget. A screen reader gets one progress bar.
+ * How much of the monthly budget is used: a title with the budget, the bar, and what is left.
+ * Sits inside a SummaryCard, which gives it its rounded bottom edge. Renders nothing without a budget. A screen reader gets one progress bar.
  */
 export function BudgetProgress({
   spentCents,
   budgetCents,
   currency,
   allowanceNow,
-  variant = 'full',
 }: Props) {
   const theme = useTheme();
   const status = budgetStatus(spentCents, budgetCents);
@@ -56,9 +50,9 @@ export function BudgetProgress({
   if (status.tone === 'over') {
     message = `${formatMoney(-status.remainingCents, currency)} over budget`;
   } else {
-    message = `${formatMoney(status.remainingCents, currency)} left`;
+    message = `${formatMoney(status.remainingCents, currency)} left this month`;
     if (allowanceNow !== undefined) {
-      message += ` · about ${formatMoney(dailyAllowanceCents(status.remainingCents, allowanceNow), currency)}/day`;
+      message += ` · about ${formatMoney(dailyAllowanceCents(status.remainingCents, allowanceNow), currency)} a day`;
     }
     // The bar's color change alone is not enough: say it in words too.
     if (status.tone === 'warn') message = `Almost at your limit · ${message}`;
@@ -83,26 +77,17 @@ export function BudgetProgress({
       accessibilityValue={{ min: 0, max: 100, now: Math.round(status.ratio * 100) }}
       accessibilityLabel={`Budget: spent ${spentOf}. ${message}`}
       style={[styles.strip, { backgroundColor: theme.backgroundElement }]}>
-      {variant === 'full' ? (
-        <>
-          {/* Wraps, so on a narrow screen the amounts drop to their own line instead of squeezing the title. */}
-          <View style={styles.top}>
-            <ThemedText type="smallBold" style={styles.title}>
-              Monthly budget
-            </ThemedText>
-            <ThemedText type="small" themeColor="textSecondary" style={Numeric}>
-              {spentOf}
-            </ThemedText>
-          </View>
-          {bar}
-          {sentence}
-        </>
-      ) : (
-        <>
-          {sentence}
-          {bar}
-        </>
-      )}
+      {/* Wraps, so on a narrow screen the amounts drop to their own line instead of squeezing the title. */}
+      <View style={styles.top}>
+        <ThemedText type="smallBold" style={styles.title}>
+          Monthly budget
+        </ThemedText>
+        <ThemedText type="small" themeColor="textSecondary" style={Numeric}>
+          {formatMoney(budgetCents, currency)}
+        </ThemedText>
+      </View>
+      {bar}
+      {sentence}
     </View>
   );
 }

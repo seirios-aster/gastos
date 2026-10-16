@@ -1,6 +1,5 @@
 import { useRef, useState } from 'react';
 import {
-  Alert,
   Keyboard,
   KeyboardAvoidingView,
   Platform,
@@ -13,11 +12,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BudgetProgress } from '@/components/budget-progress';
 import { Button } from '@/components/button';
+import { ActionSheet } from '@/components/action-sheet';
 import { CategoryChips } from '@/components/category-chips';
 import { ExpenseRow } from '@/components/expense-row';
 import { ExpenseSheet } from '@/components/expense-sheet';
 import { FieldError } from '@/components/field-error';
-import { QuickAddBar } from '@/components/quick-add-bar';
+import { info } from '@/components/notices';
 import { HeaderActions } from '@/components/header-actions';
 import { SummaryCard } from '@/components/summary-card';
 import { ThemedText } from '@/components/themed-text';
@@ -25,6 +25,7 @@ import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import { useExpenses } from '@/context/expenses-context';
 import { useNow } from '@/hooks/use-now';
+import { useSheetNotice } from '@/hooks/use-sheet-notice';
 import { useTheme } from '@/hooks/use-theme';
 import { addDays, longDateLabel } from '@/lib/dates';
 import {
@@ -35,8 +36,7 @@ import {
   type Expense,
 } from '@/lib/expenses';
 import { tap } from '@/lib/haptics';
-import { centsToInput, formatMoney, parseAmountToCents } from '@/lib/money';
-import type { Draft } from '@/lib/quick-entry';
+import { formatMoney, parseAmountToCents } from '@/lib/money';
 
 export default function TodayScreen() {
   const theme = useTheme();
@@ -50,6 +50,7 @@ export default function TodayScreen() {
   const [invalid, setInvalid] = useState(false);
   const [editing, setEditing] = useState<Expense | null>(null);
   const submitting = useRef(false);
+  const { notify, sheetProps } = useSheetNotice();
 
   // The chosen category may have been deleted in Settings; fall back to the first one.
   const category = categories.some((c) => c.id === chosenCategory)
@@ -60,14 +61,6 @@ export default function TodayScreen() {
   const monthSpent = sumCents(expensesInMonth(expenses, now));
   const todayTotal = sumCents(today);
   const yesterdayTotal = sumCents(expensesOnDay(expenses, addDays(now, -1)));
-
-  /** Fill the form from a spoken or scanned draft; the user still taps Add to confirm. */
-  function applyDraft(draft: Draft) {
-    setAmount(draft.amountCents === null ? '' : centsToInput(draft.amountCents));
-    setTitle(draft.title.slice(0, MAX_NOTE_LENGTH));
-    setCategory(draft.category);
-    setInvalid(false);
-  }
 
   async function submit() {
     // Return on the keyboard and the button can both fire while the first save is still running.
@@ -88,7 +81,7 @@ export default function TodayScreen() {
       tap();
     } catch (error) {
       console.warn('Could not save the expense', error);
-      Alert.alert('Could not save', 'The expense was not saved. Please try again.');
+      notify(info('Could not save', 'The expense was not saved. Please try again.'));
     } finally {
       submitting.current = false;
     }
@@ -121,15 +114,12 @@ export default function TodayScreen() {
               amount={formatMoney(todayTotal, currency)}
               footer={`${today.length} ${today.length === 1 ? 'expense' : 'expenses'} · Yesterday ${formatMoney(yesterdayTotal, currency)}`}>
               <BudgetProgress
-                variant="compact"
                 spentCents={monthSpent}
                 budgetCents={budgetCents}
                 currency={currency}
                 allowanceNow={now}
               />
             </SummaryCard>
-
-            <QuickAddBar onDraft={applyDraft} />
 
             <ThemedView type="backgroundElement" style={styles.addCard}>
               <View style={styles.amountRow}>
@@ -191,6 +181,7 @@ export default function TodayScreen() {
       </SafeAreaView>
 
       <ExpenseSheet expense={editing} onClose={() => setEditing(null)} />
+      <ActionSheet {...sheetProps} />
     </ThemedView>
   );
 }
