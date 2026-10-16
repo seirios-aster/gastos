@@ -1,6 +1,5 @@
 import { useRef, useState } from 'react';
 import {
-  Alert,
   Keyboard,
   KeyboardAvoidingView,
   Platform,
@@ -13,10 +12,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BudgetProgress } from '@/components/budget-progress';
 import { Button } from '@/components/button';
+import { ActionSheet } from '@/components/action-sheet';
 import { CategoryChips } from '@/components/category-chips';
 import { ExpenseRow } from '@/components/expense-row';
 import { ExpenseSheet } from '@/components/expense-sheet';
 import { FieldError } from '@/components/field-error';
+import { info } from '@/components/notices';
 import { HeaderActions } from '@/components/header-actions';
 import { SummaryCard } from '@/components/summary-card';
 import { ThemedText } from '@/components/themed-text';
@@ -24,6 +25,7 @@ import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import { useExpenses } from '@/context/expenses-context';
 import { useNow } from '@/hooks/use-now';
+import { useSheetNotice } from '@/hooks/use-sheet-notice';
 import { useTheme } from '@/hooks/use-theme';
 import { addDays, longDateLabel } from '@/lib/dates';
 import {
@@ -48,6 +50,7 @@ export default function TodayScreen() {
   const [invalid, setInvalid] = useState(false);
   const [editing, setEditing] = useState<Expense | null>(null);
   const submitting = useRef(false);
+  const { notify, sheetProps } = useSheetNotice();
 
   // The chosen category may have been deleted in Settings; fall back to the first one.
   const category = categories.some((c) => c.id === chosenCategory)
@@ -78,7 +81,7 @@ export default function TodayScreen() {
       tap();
     } catch (error) {
       console.warn('Could not save the expense', error);
-      Alert.alert('Could not save', 'The expense was not saved. Please try again.');
+      notify(info('Could not save', 'The expense was not saved. Please try again.'));
     } finally {
       submitting.current = false;
     }
@@ -178,6 +181,7 @@ export default function TodayScreen() {
       </SafeAreaView>
 
       <ExpenseSheet expense={editing} onClose={() => setEditing(null)} />
+      <ActionSheet {...sheetProps} />
     </ThemedView>
   );
 }
