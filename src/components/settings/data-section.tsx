@@ -1,7 +1,8 @@
 import { useRef, useState } from 'react';
-import { Alert, Pressable, Share, StyleSheet, TextInput } from 'react-native';
+import { Alert, Share, StyleSheet, TextInput, View } from 'react-native';
 
 import { ActionSheet } from '@/components/action-sheet';
+import { Button } from '@/components/button';
 import { FieldError } from '@/components/field-error';
 import { Section } from '@/components/settings/section';
 import { ThemedText } from '@/components/themed-text';
@@ -136,20 +137,14 @@ export function DataSection() {
     <>
       <Section
         title="Backup"
-        hint="Everything is stored on this phone only. A backup is a full copy (expenses, categories and recurring expenses) to keep safe or move to a new phone.">
-        <Pressable
-          accessibilityRole="button"
-          onPress={shareBackup}
-          style={[styles.action, { backgroundColor: theme.backgroundElement }]}>
-          <ThemedText type="smallBold">Export backup</ThemedText>
-        </Pressable>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityState={{ expanded: restoring }}
+        hint="Your data lives only on this phone. A backup is a full copy to keep safe.">
+        <Button variant="secondary" label="Export backup" onPress={shareBackup} />
+        <Button
+          variant="secondary"
+          label="Restore from backup"
+          expanded={restoring}
           onPress={() => setRestoring((open) => !open)}
-          style={[styles.action, { backgroundColor: theme.backgroundElement }]}>
-          <ThemedText type="smallBold">Restore from backup</ThemedText>
-        </Pressable>
+        />
         {restoring && (
           <>
             <ThemedText type="small" themeColor="textSecondary">
@@ -171,27 +166,15 @@ export function DataSection() {
               accessibilityLabel="Backup text"
             />
             {error ? <FieldError>{error}</FieldError> : null}
-            <Pressable
-              accessibilityRole="button"
-              onPress={confirmRestore}
-              style={[styles.action, { backgroundColor: theme.accent }]}>
-              <ThemedText type="smallBold" themeColor="onAccent">
-                Restore
-              </ThemedText>
-            </Pressable>
+            <Button label="Restore" onPress={confirmRestore} />
           </>
         )}
       </Section>
 
       <Section
         title="Spreadsheet (CSV)"
-        hint="Your expenses as a .csv file for Excel or Google Sheets. Gastos can't restore from a CSV, so use a backup for that.">
-        <Pressable
-          accessibilityRole="button"
-          onPress={exportCsv}
-          style={[styles.action, { backgroundColor: theme.backgroundElement }]}>
-          <ThemedText type="smallBold">Export CSV</ThemedText>
-        </Pressable>
+        hint="A .csv file for Excel or Google Sheets. To restore, use a backup instead.">
+        <Button variant="secondary" label="Export CSV" onPress={exportCsv} />
       </Section>
 
       <ActionSheet
@@ -213,27 +196,19 @@ export function DataSection() {
         onClose={() => setChoosingCsv(false)}
       />
 
-      <Section
-        title="Erase"
-        hint="Deletes every expense on this phone. Your categories, recurring expenses and settings are kept.">
-        <Pressable
-          accessibilityRole="button"
-          onPress={confirmErase}
-          style={[styles.action, { backgroundColor: theme.backgroundElement }]}>
-          <ThemedText type="smallBold" themeColor="danger">
-            Erase all expenses
-          </ThemedText>
-        </Pressable>
-      </Section>
+      {/* Set apart from the harmless actions above. */}
+      <View style={styles.danger}>
+        <Section
+          title="Erase"
+          hint="Deletes every expense on this phone. Categories, recurring expenses and settings are kept.">
+          <Button variant="danger" label="Erase all expenses" onPress={confirmErase} />
+        </Section>
+      </View>
     </>
   );
 }
 
 const styles = StyleSheet.create({
-  action: {
-    alignItems: 'center',
-    borderRadius: Spacing.three - 4,
-    paddingVertical: Spacing.three - 2,
-  },
+  danger: { marginTop: Spacing.three },
   backupInput: { minHeight: 120, maxHeight: 240, textAlignVertical: 'top' },
 });

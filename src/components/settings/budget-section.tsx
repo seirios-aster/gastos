@@ -16,7 +16,7 @@ export function BudgetSection() {
   return (
     <Section
       title="Monthly budget"
-      hint="Track your spending against a limit on the Today and History screens. Leave empty for no budget.">
+      hint="A monthly limit, shown on Today and History. Leave empty for none.">
       <TextInput
         style={inputStyle}
         value={text}

@@ -1,11 +1,9 @@
-import * as Haptics from 'expo-haptics';
 import { useRef, useState } from 'react';
 import {
   Alert,
   Keyboard,
   KeyboardAvoidingView,
   Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
   TextInput,
@@ -14,6 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BudgetProgress } from '@/components/budget-progress';
+import { Button } from '@/components/button';
 import { CategoryChips } from '@/components/category-chips';
 import { ExpenseRow } from '@/components/expense-row';
 import { ExpenseSheet } from '@/components/expense-sheet';
@@ -23,7 +22,7 @@ import { HeaderActions } from '@/components/header-actions';
 import { SummaryCard } from '@/components/summary-card';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { BottomTabInset, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import { useExpenses } from '@/context/expenses-context';
 import { useNow } from '@/hooks/use-now';
 import { useTheme } from '@/hooks/use-theme';
@@ -35,6 +34,7 @@ import {
   sumCents,
   type Expense,
 } from '@/lib/expenses';
+import { tap } from '@/lib/haptics';
 import { centsToInput, formatMoney, parseAmountToCents } from '@/lib/money';
 import type { Draft } from '@/lib/quick-entry';
 
@@ -85,7 +85,7 @@ export default function TodayScreen() {
       setTitle('');
       setInvalid(false);
       Keyboard.dismiss();
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+      tap();
     } catch (error) {
       console.warn('Could not save the expense', error);
       Alert.alert('Could not save', 'The expense was not saved. Please try again.');
@@ -109,7 +109,9 @@ export default function TodayScreen() {
                 <ThemedText type="small" themeColor="textSecondary">
                   {longDateLabel(now)}
                 </ThemedText>
-                <ThemedText type="subtitle">Today</ThemedText>
+                <ThemedText type="subtitle" accessibilityRole="header">
+                  Today
+                </ThemedText>
               </View>
               <HeaderActions />
             </View>
@@ -117,15 +119,15 @@ export default function TodayScreen() {
             <SummaryCard
               label="Spent today"
               amount={formatMoney(todayTotal, currency)}
-              footer={`${today.length} ${today.length === 1 ? 'expense' : 'expenses'} · Yesterday ${formatMoney(yesterdayTotal, currency)}`}
-            />
-
-            <BudgetProgress
-              spentCents={monthSpent}
-              budgetCents={budgetCents}
-              currency={currency}
-              allowanceNow={now}
-            />
+              footer={`${today.length} ${today.length === 1 ? 'expense' : 'expenses'} · Yesterday ${formatMoney(yesterdayTotal, currency)}`}>
+              <BudgetProgress
+                variant="compact"
+                spentCents={monthSpent}
+                budgetCents={budgetCents}
+                currency={currency}
+                allowanceNow={now}
+              />
+            </SummaryCard>
 
             <QuickAddBar onDraft={applyDraft} />
 
@@ -133,7 +135,11 @@ export default function TodayScreen() {
               <View style={styles.amountRow}>
                 {currency ? <ThemedText style={styles.amountSymbol}>{currency}</ThemedText> : null}
                 <TextInput
-                  style={[styles.amountInput, { color: theme.text }]}
+                  style={[
+                    styles.amountInput,
+                    // A bold "0.00" hint looks like a value someone typed.
+                    { color: theme.text, fontWeight: amount ? '600' : '400' },
+                  ]}
                   value={amount}
                   onChangeText={(text) => {
                     setAmount(text);
@@ -154,24 +160,14 @@ export default function TodayScreen() {
                 value={title}
                 onChangeText={setTitle}
                 placeholder="Note (optional)"
+                accessibilityLabel="Note"
                 maxLength={MAX_NOTE_LENGTH}
                 placeholderTextColor={theme.textSecondary}
                 returnKeyType="done"
                 onSubmitEditing={submit}
               />
-              <CategoryChips value={category} onChange={setCategory} />
-              <Pressable
-                accessibilityRole="button"
-                onPress={submit}
-                style={({ pressed }) => [
-                  styles.addButton,
-                  { backgroundColor: theme.accent },
-                  pressed && styles.pressed,
-                ]}>
-                <ThemedText type="smallBold" themeColor="onAccent">
-                  Add expense
-                </ThemedText>
-              </Pressable>
+              <CategoryChips value={category} onChange={setCategory} bleed={Spacing.three} />
+              <Button label="Add expense" onPress={submit} />
             </ThemedView>
 
             <View style={styles.list}>
@@ -215,25 +211,19 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   addCard: {
-    borderRadius: Spacing.four,
+    borderRadius: Radius.card,
     padding: Spacing.three,
-    gap: Spacing.three - 4,
+    gap: Spacing.mid,
   },
   amountRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
   amountSymbol: { fontSize: 32, lineHeight: 40, fontWeight: '600' },
-  amountInput: { flex: 1, minWidth: 0, fontSize: 32, fontWeight: '600', paddingVertical: Spacing.one },
+  amountInput: { flex: 1, minWidth: 0, fontSize: 32, paddingVertical: Spacing.one },
   noteInput: {
-    borderRadius: Spacing.three - 4,
+    borderRadius: Radius.control,
     paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.three - 4,
+    paddingVertical: Spacing.mid,
     fontSize: 16,
   },
-  addButton: {
-    alignItems: 'center',
-    borderRadius: Spacing.three - 4,
-    paddingVertical: Spacing.three - 2,
-  },
-  pressed: { opacity: 0.8 },
   list: { gap: Spacing.two },
   empty: { textAlign: 'center', paddingVertical: Spacing.four },
 });

@@ -33,7 +33,8 @@ export function BarChart({ bars, height = 110, accessibilityLabel }: Props) {
                 {
                   height: bar.value > 0 ? Math.max((bar.value / max) * height, 4) : 2,
                   backgroundColor: bar.value === 0 ? theme.backgroundSelected : theme.accent,
-                  opacity: bar.value === 0 || bar.highlight ? 1 : 0.55,
+                  // 0.8 keeps the bars at 3:1 or better against the card (0.55 gave 2.2:1 in light mode).
+                  opacity: bar.value === 0 || bar.highlight ? 1 : 0.8,
                 },
               ]}
             />
@@ -45,7 +46,7 @@ export function BarChart({ bars, height = 110, accessibilityLabel }: Props) {
           <View key={bar.key} style={styles.labelCell}>
             {bar.label ? (
               <ThemedText
-                type="small"
+                type="caption"
                 themeColor={bar.highlight ? 'text' : 'textSecondary'}
                 maxFontSizeMultiplier={1.3}
                 style={styles.label}>
@@ -66,5 +67,5 @@ const styles = StyleSheet.create({
   labels: { flexDirection: 'row', marginTop: 6 },
   labelCell: { flex: 1, alignItems: 'center', overflow: 'visible' },
   // Wider than its (narrow) bar column on purpose; the cell lets it overflow evenly on both sides.
-  label: { fontSize: 11, lineHeight: 14, width: 40, textAlign: 'center' },
+  label: { width: 40, textAlign: 'center' },
 });

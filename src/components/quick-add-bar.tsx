@@ -4,7 +4,7 @@ import { ActivityIndicator, Alert, Image, Pressable, StyleSheet, View } from 're
 
 import { ThemedText } from '@/components/themed-text';
 import { VoiceSheet } from '@/components/voice-sheet';
-import { Spacing } from '@/constants/theme';
+import { Radius, Spacing, Touch } from '@/constants/theme';
 import { useExpenses } from '@/context/expenses-context';
 import { useTheme } from '@/hooks/use-theme';
 import { parseReceipt, type Draft } from '@/lib/quick-entry';
@@ -102,14 +102,14 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', gap: Spacing.two },
   button: {
     flex: 1,
-    minHeight: 44,
+    minHeight: Touch.min,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: Spacing.three - 4,
+    borderRadius: Radius.control,
     paddingHorizontal: Spacing.two,
   },
   pressed: { opacity: 0.8 },
-  photoCard: { flexDirection: 'row', gap: Spacing.three, padding: Spacing.three, borderRadius: Spacing.three },
+  photoCard: { flexDirection: 'row', gap: Spacing.three, padding: Spacing.three, borderRadius: Radius.row },
   photo: { width: 72, height: 96, borderRadius: Spacing.two },
   photoText: { flex: 1, minWidth: 0, gap: Spacing.one },
 });

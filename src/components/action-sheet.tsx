@@ -3,7 +3,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { MaxContentWidth, Radius, Spacing, Touch } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 export type SheetAction = {
@@ -61,7 +61,7 @@ export function ActionSheet({ visible, title, message, actions, cancelLabel = 'C
         <ThemedView
           type="backgroundElement"
           style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, Spacing.three) + Spacing.two }]}>
-          <ThemedText type="subtitle" style={styles.title}>
+          <ThemedText type="heading" accessibilityRole="header">
             {title}
           </ThemedText>
           {message ? (
@@ -127,18 +127,19 @@ const styles = StyleSheet.create({
   sheet: {
     width: '100%',
     maxWidth: MaxContentWidth,
-    borderTopLeftRadius: Spacing.four,
-    borderTopRightRadius: Spacing.four,
+    borderTopLeftRadius: Radius.card,
+    borderTopRightRadius: Radius.card,
     paddingHorizontal: Spacing.four,
     paddingTop: Spacing.four,
     gap: Spacing.two,
   },
-  title: { fontSize: 24, lineHeight: 32 },
   message: { marginBottom: Spacing.two },
   action: {
     alignItems: 'center',
-    borderRadius: Spacing.three - 4,
-    paddingVertical: Spacing.three - 2,
+    minHeight: Touch.button,
+    justifyContent: 'center',
+    borderRadius: Radius.control,
+    paddingVertical: Spacing.two,
     paddingHorizontal: Spacing.three,
     gap: 2,
   },

@@ -6,7 +6,7 @@ import {
   TabTriggerSlotProps,
   TabListProps,
 } from 'expo-router/ui';
-import { Pressable, View, StyleSheet } from 'react-native';
+import { Pressable, View, StyleSheet, useWindowDimensions } from 'react-native';
 
 import { ThemedText } from './themed-text';
 import { ThemedView } from './themed-view';
@@ -25,6 +25,9 @@ export default function AppTabs() {
           <TabTrigger name="history" href="/history" asChild>
             <TabButton>History</TabButton>
           </TabTrigger>
+          <TabTrigger name="recurring" href="/recurring" asChild>
+            <TabButton>Recurring</TabButton>
+          </TabTrigger>
         </CustomTabList>
       </TabList>
     </Tabs>
@@ -33,7 +36,11 @@ export default function AppTabs() {
 
 export function TabButton({ children, isFocused, ...props }: TabTriggerSlotProps) {
   return (
-    <Pressable {...props} style={({ pressed }) => pressed && styles.pressed}>
+    <Pressable
+      {...props}
+      role="tab"
+      aria-selected={!!isFocused}
+      style={({ pressed }) => pressed && styles.pressed}>
       <ThemedView
         type={isFocused ? 'backgroundSelected' : 'backgroundElement'}
         style={styles.tabButtonView}>
@@ -46,12 +53,19 @@ export function TabButton({ children, isFocused, ...props }: TabTriggerSlotProps
 }
 
 export function CustomTabList(props: TabListProps) {
+  // Three tabs plus the brand do not fit on a phone-wide browser window, so drop the brand there.
+  const narrow = useWindowDimensions().width < 480;
+
   return (
     <View {...props} style={styles.tabListContainer}>
-      <ThemedView type="backgroundElement" style={styles.innerContainer}>
-        <ThemedText type="smallBold" style={styles.brandText}>
-          Gastos
-        </ThemedText>
+      <ThemedView
+        type="backgroundElement"
+        style={[styles.innerContainer, narrow && styles.innerContainerNarrow]}>
+        {!narrow && (
+          <ThemedText type="smallBold" style={styles.brandText}>
+            Gastos
+          </ThemedText>
+        )}
 
         {props.children}
       </ThemedView>
@@ -77,6 +91,10 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     gap: Spacing.two,
     maxWidth: MaxContentWidth,
+  },
+  innerContainerNarrow: {
+    paddingHorizontal: Spacing.two,
+    justifyContent: 'center',
   },
   brandText: {
     marginRight: 'auto',

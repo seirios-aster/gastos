@@ -10,12 +10,13 @@ import {
   View,
 } from 'react-native';
 
+import { Button } from '@/components/button';
 import { CategoryChips } from '@/components/category-chips';
 import { FieldError } from '@/components/field-error';
 import { Sheet } from '@/components/sheet';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Spacing } from '@/constants/theme';
+import { Radius, Spacing, Touch } from '@/constants/theme';
 import { useExpenses } from '@/context/expenses-context';
 import { useNow } from '@/hooks/use-now';
 import { useTheme } from '@/hooks/use-theme';
@@ -117,6 +118,7 @@ function EditForm({ expense, onClose }: { expense: Expense; onClose: () => void 
               }}
               keyboardType="decimal-pad"
               placeholder="0.00"
+              accessibilityLabel="Amount"
               placeholderTextColor={theme.textSecondary}
             />
           </View>
@@ -132,6 +134,7 @@ function EditForm({ expense, onClose }: { expense: Expense; onClose: () => void 
             value={title}
             onChangeText={setTitle}
             placeholder="What was it for?"
+            accessibilityLabel="Note"
             maxLength={MAX_NOTE_LENGTH}
             placeholderTextColor={theme.textSecondary}
           />
@@ -141,7 +144,7 @@ function EditForm({ expense, onClose }: { expense: Expense; onClose: () => void 
           <ThemedText type="small" themeColor="textSecondary">
             Category
           </ThemedText>
-          <CategoryChips value={category} onChange={setCategory} />
+          <CategoryChips value={category} onChange={setCategory} bleed={Spacing.four} />
         </View>
 
         <View style={styles.field}>
@@ -152,8 +155,7 @@ function EditForm({ expense, onClose }: { expense: Expense; onClose: () => void 
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Previous day"
-              hitSlop={12}
-              style={styles.arrowButton}
+              style={({ pressed }) => [styles.arrowButton, pressed && styles.pressed]}
               onPress={() => setCreatedAt(addDays(createdAt, -1))}>
               <ThemedText style={styles.arrow}>‹</ThemedText>
             </Pressable>
@@ -163,33 +165,16 @@ function EditForm({ expense, onClose }: { expense: Expense; onClose: () => void 
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Next day"
-              hitSlop={12}
               disabled={!canGoLater}
-              style={styles.arrowButton}
+              style={({ pressed }) => [styles.arrowButton, pressed && styles.pressed]}
               onPress={() => setCreatedAt(addDays(createdAt, 1))}>
               <ThemedText style={[styles.arrow, !canGoLater && styles.disabled]}>›</ThemedText>
             </Pressable>
           </ThemedView>
         </View>
 
-        <Pressable
-          accessibilityRole="button"
-          onPress={save}
-          style={({ pressed }) => [
-            styles.button,
-            { backgroundColor: theme.accent },
-            pressed && styles.pressed,
-          ]}>
-          <ThemedText type="smallBold" themeColor="onAccent">
-            Save changes
-          </ThemedText>
-        </Pressable>
-
-        <Pressable accessibilityRole="button" onPress={confirmDelete} style={styles.deleteButton}>
-          <ThemedText type="smallBold" themeColor="danger">
-            Delete expense
-          </ThemedText>
-        </Pressable>
+        <Button label="Save changes" onPress={save} style={styles.save} />
+        <Button variant="danger" label="Delete expense" onPress={confirmDelete} />
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -202,11 +187,11 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.five,
     gap: Spacing.three,
   },
-  field: { gap: Spacing.one + 2 },
+  field: { gap: Spacing.two },
   input: {
-    borderRadius: Spacing.three - 4,
+    borderRadius: Radius.control,
     paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.three - 4,
+    paddingVertical: Spacing.mid,
     fontSize: 16,
   },
   amountRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
@@ -216,20 +201,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    borderRadius: Spacing.three - 4,
+    borderRadius: Radius.control,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
   },
   dateText: { flex: 1, textAlign: 'center' },
-  arrowButton: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
+  arrowButton: { minWidth: Touch.min, minHeight: Touch.min, alignItems: 'center', justifyContent: 'center' },
   arrow: { fontSize: 28, lineHeight: 34 },
   disabled: { opacity: 0.25 },
-  button: {
-    alignItems: 'center',
-    borderRadius: Spacing.three - 4,
-    paddingVertical: Spacing.three - 2,
-    marginTop: Spacing.two,
-  },
+  save: { marginTop: Spacing.two },
   pressed: { opacity: 0.8 },
-  deleteButton: { alignItems: 'center', paddingVertical: Spacing.three },
 });

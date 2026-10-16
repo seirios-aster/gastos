@@ -13,6 +13,11 @@ export function addDays(ts: number, days: number): number {
   return d.getTime();
 }
 
+/** Whole calendar days from `from` to `to`: 0 the same day, 1 the next day, negative if `to` is earlier. */
+export function daysBetween(from: number, to: number): number {
+  return Math.round((startOfDay(to) - startOfDay(from)) / DAY_MS);
+}
+
 export function startOfMonth(ts: number): number {
   const d = new Date(ts);
   return new Date(d.getFullYear(), d.getMonth(), 1).getTime();
@@ -49,6 +54,15 @@ export function dayLabel(ts: number, now: number): string {
     month: 'short',
     day: 'numeric',
   });
+}
+
+/** What a coming date is called: "Today", "Tomorrow", "In 5 days" up to six days out, then e.g. "Oct 24". */
+export function dueLabel(ts: number, now: number): string {
+  const days = daysBetween(now, ts);
+  if (days <= 0) return 'Today';
+  if (days === 1) return 'Tomorrow';
+  if (days <= 6) return `In ${days} days`;
+  return shortDateLabel(ts);
 }
 
 export function longDateLabel(ts: number): string {

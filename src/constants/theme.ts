@@ -7,30 +7,9 @@ import '@/global.css';
 
 import { Platform } from 'react-native';
 
-export const Colors = {
-  light: {
-    text: '#000000',
-    background: '#ffffff',
-    backgroundElement: '#F0F0F3',
-    backgroundSelected: '#E0E1E6',
-    textSecondary: '#60646C',
-    accent: '#0A6BD6',
-    onAccent: '#ffffff',
-    danger: '#BE1E16',
-    warning: '#855800',
-  },
-  dark: {
-    text: '#ffffff',
-    background: '#000000',
-    backgroundElement: '#212225',
-    backgroundSelected: '#2E3135',
-    textSecondary: '#B0B4BA',
-    accent: '#4DA3FF',
-    onAccent: '#000000',
-    danger: '#FF6B61',
-    warning: '#FFC247',
-  },
-} as const;
+import { Colors } from './colors';
+
+export { Colors };
 
 export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
 
@@ -63,11 +42,19 @@ export const Spacing = {
   half: 2,
   one: 4,
   two: 8,
+  /** 12: the gap inside a card and the vertical padding of a field. */
+  mid: 12,
   three: 16,
   four: 24,
   five: 32,
   six: 64,
 } as const;
+
+/** Corner radii. Cards, rows and bars, controls (buttons, inputs), and fully round chips. */
+export const Radius = { control: 12, row: 16, card: 24, pill: 999 } as const;
+
+/** Smallest comfortable touch targets, in dp. */
+export const Touch = { min: 44, button: 48 } as const;
 
 export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
 export const MaxContentWidth = 800;
