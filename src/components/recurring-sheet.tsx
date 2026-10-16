@@ -25,10 +25,12 @@ import { centsToInput, formatMoney, parseAmountToCents } from '@/lib/money';
 import {
   describeSchedule,
   monthlyEquivalentCents,
+  REMINDER_CHOICES,
   WEEKDAYS,
   type Frequency,
   type Recurring,
 } from '@/lib/recurring';
+import { ensureReminderPermission, sendTestReminder } from '@/lib/reminders';
 
 type Props = {
   visible: boolean;
@@ -125,13 +127,30 @@ export function RecurringSheet({ visible, onClose }: Props) {
                   <ThemedText type="small" themeColor="textSecondary">
                     {item.paused
                       ? `Paused · ${describeSchedule(item)}`
-                      : `${describeSchedule(item)} · next ${shortDateLabel(item.nextDue)}`}
+                      : `${describeSchedule(item)} · next ${shortDateLabel(item.nextDue)}${item.remindDays === null ? '' : ' · 🔔'}`}
                   </ThemedText>
                 </View>
                 <ThemedText type="smallBold">{formatMoney(item.amountCents, currency)}</ThemedText>
               </Pressable>
             );
           })}
+
+          {recurring.some((item) => !item.paused && item.remindDays !== null) && (
+            <Pressable
+              accessibilityRole="button"
+              hitSlop={8}
+              onPress={async () => {
+                const sent = await sendTestReminder();
+                Alert.alert(
+                  sent ? 'Test sent' : 'Notifications are off',
+                  sent
+                    ? 'A notification will appear in a few seconds. Leave the app or pull down your notification shade to see it.'
+                    : "Turn on notifications for Gastos in your phone's Settings to get reminders."
+                );
+              }}>
+              <ThemedText type="linkPrimary">Send a test notification</ThemedText>
+            </Pressable>
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
     </Sheet>
@@ -160,8 +179,23 @@ function RecurringForm({ item, onDone }: FormProps) {
   const [monthDay, setMonthDay] = useState(() =>
     String(item?.frequency === 'monthly' ? item.day : new Date().getDate())
   );
+  // 'off', or how many days before the due day to remind ('0' = on the day).
+  const [remind, setRemind] = useState(item?.remindDays == null ? 'off' : String(item.remindDays));
   const [error, setError] = useState('');
   const saving = useRef(false);
+
+  async function chooseReminder(value: string) {
+    // Ask for permission when it is first needed, not when the app opens.
+    if (value !== 'off' && !(await ensureReminderPermission())) {
+      Alert.alert(
+        'Notifications are off',
+        "Turn on notifications for Gastos in your phone's Settings to get reminders."
+      );
+      setRemind('off');
+      return;
+    }
+    setRemind(value);
+  }
 
   async function save() {
     if (saving.current) return;
@@ -183,6 +217,7 @@ function RecurringForm({ item, onDone }: FormProps) {
         category,
         frequency,
         day: frequency === 'weekly' ? weekday : dayOfMonth,
+        remindDays: remind === 'off' ? null : Number(remind),
       };
       if (item) {
         await updateRecurring(item.id, input);
@@ -308,6 +343,21 @@ function RecurringForm({ item, onDone }: FormProps) {
       {frequency === 'monthly' && (
         <ThemedText type="small" themeColor="textSecondary">
           On shorter months it lands on the last day (e.g. the 31st becomes the 30th).
+        </ThemedText>
+      )}
+      <ThemedText type="smallBold">Remind me</ThemedText>
+      <Segmented
+        options={REMINDER_CHOICES.map((choice) => ({
+          value: String(choice.days ?? 'off'),
+          label: choice.label,
+        }))}
+        value={remind}
+        onChange={chooseReminder}
+      />
+      {remind !== 'off' && (
+        <ThemedText type="small" themeColor="textSecondary">
+          You&apos;ll get a notification at 9:00 AM{remind === '0' ? ' on the due day' : ' the day before'}.
+          Gastos still logs the expense by itself when you open the app.
         </ThemedText>
       )}
       {error ? <FieldError>{error}</FieldError> : null}

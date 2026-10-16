@@ -1,6 +1,6 @@
 import { dayKey, dayLabel, daysInMonth, isSameMonth, startOfMonth, addMonths } from './dates';
 import { MAX_CENTS } from './money';
-import type { Recurring } from './recurring';
+import { MAX_REMIND_DAYS, type Recurring } from './recurring';
 
 export type Category = { id: string; label: string; emoji: string };
 
@@ -234,10 +234,12 @@ function readExpense(value: unknown): Expense | null {
 
 function readRecurring(value: unknown): Recurring | null {
   if (!isRecord(value)) return null;
-  const { id, title, amountCents, category, frequency, day, nextDue, paused } = value;
+  const { id, title, amountCents, category, frequency, day, nextDue, paused, remindDays } = value;
   if (!isInt(id, 1, Number.MAX_SAFE_INTEGER) || typeof title !== 'string') return null;
   // Older backups have no `paused`; that means an active item.
   if (paused !== undefined && typeof paused !== 'boolean') return null;
+  // Older backups have no `remindDays`; that means no reminder.
+  if (remindDays != null && !isInt(remindDays, 0, MAX_REMIND_DAYS)) return null;
   if (!isInt(amountCents, 1, MAX_CENTS) || !isText(category, MAX_SHORT_LENGTH)) return null;
   if (frequency !== 'weekly' && frequency !== 'monthly') return null;
   const [firstDay, lastDay] = frequency === 'weekly' ? [0, 6] : [1, 31];
@@ -251,6 +253,7 @@ function readRecurring(value: unknown): Recurring | null {
     day,
     nextDue,
     paused: paused === true,
+    remindDays: typeof remindDays === 'number' ? remindDays : null,
   };
 }
 

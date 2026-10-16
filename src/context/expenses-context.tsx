@@ -38,6 +38,7 @@ import {
   type ExpenseInput,
 } from '@/lib/expenses';
 import type { Recurring, RecurringInput } from '@/lib/recurring';
+import { syncReminders } from '@/lib/reminders';
 
 const CURRENCY_KEY = 'currency';
 const BUDGET_KEY = 'budget_cents';
@@ -169,6 +170,22 @@ export function ExpensesProvider({ children }: { children: React.ReactNode }) {
     });
     return () => subscription.remove();
   }, [syncRecurring]);
+
+  // Keep the phone's pending reminders in step with the recurring items, and top them up whenever
+  // the app comes back to the front so they never run out.
+  const reminderInputs = useRef({ recurring, categories, currency });
+  useEffect(() => {
+    reminderInputs.current = { recurring, categories, currency };
+    if (ready) void syncReminders(recurring, categories, currency);
+  }, [ready, recurring, categories, currency]);
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state !== 'active') return;
+      const latest = reminderInputs.current;
+      void syncReminders(latest.recurring, latest.categories, latest.currency);
+    });
+    return () => subscription.remove();
+  }, []);
 
   const setCurrency = useCallback((symbol: string) => {
     setCurrencyState(symbol);

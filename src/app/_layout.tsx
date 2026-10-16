@@ -8,8 +8,12 @@ import AppTabs from '@/components/app-tabs';
 import { UndoToast } from '@/components/undo-toast';
 import { ExpensesProvider, useExpenses } from '@/context/expenses-context';
 import { migrate } from '@/lib/db';
+import { configureReminders } from '@/lib/reminders';
+import { applySavedTheme } from '@/lib/theme-preference';
 
 SplashScreen.preventAutoHideAsync();
+applySavedTheme();
+void configureReminders();
 
 /** Renders nothing until the data has loaded, so no screen flashes empty; the splash overlay covers the wait. */
 function ReadyGate({ children }: { children: React.ReactNode }) {

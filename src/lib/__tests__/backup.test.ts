@@ -15,8 +15,8 @@ const expenses: Expense[] = [
   { id: 1, title: '', amountCents: MAX_CENTS, category: 'food', createdAt: t - 86_400_000 },
 ];
 const recurring: Recurring[] = [
-  { id: 1, title: 'Rent', amountCents: 50000, category: 'food', frequency: 'monthly', day: 31, nextDue: t, paused: false },
-  { id: 2, title: 'Gym', amountCents: 2000, category: 'food', frequency: 'weekly', day: 0, nextDue: t, paused: true },
+  { id: 1, title: 'Rent', amountCents: 50000, category: 'food', frequency: 'monthly', day: 31, nextDue: t, paused: false, remindDays: 1 },
+  { id: 2, title: 'Gym', amountCents: 2000, category: 'food', frequency: 'weekly', day: 0, nextDue: t, paused: true, remindDays: null },
 ];
 
 const valid = (): Backup => JSON.parse(toBackupJson({ expenses, categories, recurring }, t));
@@ -118,6 +118,18 @@ describe('malformed backups', () => {
     assert.deepEqual(older.backup.recurring.map((r) => r.paused), [false, false]);
 
     reject({ ...valid(), recurring: [{ ...recurring[0], paused: 'yes' }] });
+  });
+
+  it('reads reminders, treating a missing one as off, and rejects nonsense', () => {
+    const old = valid();
+    for (const item of old.recurring) delete (item as Partial<typeof item>).remindDays;
+    const older = parseBackup(JSON.stringify(old));
+    assert.ok(older.ok);
+    assert.deepEqual(older.backup.recurring.map((r) => r.remindDays), [null, null]);
+
+    reject({ ...valid(), recurring: [{ ...recurring[0], remindDays: -1 }] });
+    reject({ ...valid(), recurring: [{ ...recurring[0], remindDays: 99 }] });
+    reject({ ...valid(), recurring: [{ ...recurring[0], remindDays: 'soon' }] });
   });
 
   it('trims an over-long note instead of rejecting the whole backup', () => {

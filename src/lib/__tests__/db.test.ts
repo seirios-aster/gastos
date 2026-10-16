@@ -75,7 +75,7 @@ describe('migrate', () => {
     await migrate(db);
     await migrate(db); // idempotent
 
-    assert.equal((raw.prepare('PRAGMA user_version').get() as { user_version: number }).user_version, 3);
+    assert.equal((raw.prepare('PRAGMA user_version').get() as { user_version: number }).user_version, 4);
     const expenses = await loadExpenses(db);
     assert.equal(expenses.length, 1);
     assert.equal(expenses[0].title, 'Old coffee');
@@ -85,7 +85,7 @@ describe('migrate', () => {
     assert.equal(seeded[seeded.length - 1].id, 'other');
   });
 
-  it('upgrades a v2 database to v3 without touching its recurring items', async () => {
+  it('upgrades a v2 database to the latest schema without touching its recurring items', async () => {
     const raw = new DatabaseSync(':memory:');
     raw.exec(`CREATE TABLE expenses (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL DEFAULT '',
       amount_cents INTEGER NOT NULL, category TEXT NOT NULL DEFAULT 'other', created_at INTEGER NOT NULL);
@@ -101,11 +101,12 @@ describe('migrate', () => {
     await migrate(db);
     await migrate(db); // idempotent
 
-    assert.equal((raw.prepare('PRAGMA user_version').get() as { user_version: number }).user_version, 3);
+    assert.equal((raw.prepare('PRAGMA user_version').get() as { user_version: number }).user_version, 4);
     const [rent] = await loadRecurring(db);
     assert.equal(rent.title, 'Rent');
     assert.equal(rent.nextDue, 5000);
     assert.equal(rent.paused, false);
+    assert.equal(rent.remindDays, null); // no reminder until the person asks for one
   });
 
   it('sets up a fresh install', async () => {
@@ -141,7 +142,7 @@ describe('categories', () => {
       ['food', 'groceries', 'transport', 'bills', 'shopping', 'health', 'fun', 'c_pets', 'c_gym', 'other']
     );
     await insertExpense(db, { title: 'Kibble', amountCents: 800, category: 'c_pets', createdAt: t });
-    await insertRecurring(db, { title: 'Pet insurance', amountCents: 1500, category: 'c_pets', frequency: 'monthly', day: 1 }, t);
+    await insertRecurring(db, { title: 'Pet insurance', amountCents: 1500, category: 'c_pets', frequency: 'monthly', day: 1, remindDays: null }, t);
 
     await deleteCategoryRow(db, 'c_pets');
     categories = await loadCategories(db);
@@ -158,8 +159,8 @@ describe('recurring', () => {
   it('catches up once and never logs twice', async () => {
     const { db } = await freshDb();
     const now = d(2026, 10, 14, 15); // Wed Oct 14, after 09:00
-    await insertRecurring(db, { title: 'Rent', amountCents: 50000, category: 'bills', frequency: 'monthly', day: 1 }, d(2026, 8, 20));
-    await insertRecurring(db, { title: 'Gym', amountCents: 2000, category: 'c_gym', frequency: 'weekly', day: 3 }, d(2026, 9, 30, 10));
+    await insertRecurring(db, { title: 'Rent', amountCents: 50000, category: 'bills', frequency: 'monthly', day: 1, remindDays: null }, d(2026, 8, 20));
+    await insertRecurring(db, { title: 'Gym', amountCents: 2000, category: 'c_gym', frequency: 'weekly', day: 3, remindDays: null }, d(2026, 9, 30, 10));
     assert.equal((await loadRecurring(db)).length, 2);
 
     assert.equal(await runDueRecurring(db, d(2026, 8, 20)), false); // nothing due yet
@@ -183,7 +184,7 @@ describe('recurring', () => {
   it('logs an item added for today before 9:00 immediately, once', async () => {
     const { db } = await freshDb();
     const early = d(2026, 10, 16, 5);
-    await insertRecurring(db, { title: 'Subscription', amountCents: 999, category: 'bills', frequency: 'monthly', day: 16 }, early);
+    await insertRecurring(db, { title: 'Subscription', amountCents: 999, category: 'bills', frequency: 'monthly', day: 16, remindDays: null }, early);
     assert.equal(await runDueRecurring(db, early), true);
     const logged = await loadExpenses(db);
     assert.equal(logged.length, 1);
@@ -196,7 +197,7 @@ describe('recurring', () => {
   it('does not flood the ledger after a wrong clock', async () => {
     const { raw, db } = await freshDb();
     const now = d(2026, 10, 14, 15);
-    await insertRecurring(db, { title: 'Gym', amountCents: 2000, category: 'bills', frequency: 'weekly', day: 0 }, now);
+    await insertRecurring(db, { title: 'Gym', amountCents: 2000, category: 'bills', frequency: 'weekly', day: 0, remindDays: null }, now);
     raw.prepare('UPDATE recurring SET next_due = 0').run();
 
     assert.equal(await runDueRecurring(db, now), true);
@@ -209,7 +210,7 @@ describe('recurring', () => {
     const { db } = await freshDb();
     const t = d(2026, 10, 15);
     await insertExpense(db, { title: 'Coffee', amountCents: 450, category: 'food', createdAt: t });
-    await insertRecurring(db, { title: 'Rent', amountCents: 50000, category: 'bills', frequency: 'monthly', day: 1 }, t);
+    await insertRecurring(db, { title: 'Rent', amountCents: 50000, category: 'bills', frequency: 'monthly', day: 1, remindDays: null }, t);
     await deleteAllExpenseRows(db);
     assert.equal((await loadExpenses(db)).length, 0);
     assert.equal((await loadRecurring(db)).length, 1);
@@ -273,7 +274,7 @@ describe('importBackupRows', () => {
 
   it("does not log a recurring item twice when the old phone already logged today's", async () => {
     const { db } = await freshDb();
-    const base = { id: 1, title: 'Rent', amountCents: 50000, category: 'bills', frequency: 'monthly' as const, day: 16 };
+    const base = { id: 1, title: 'Rent', amountCents: 50000, category: 'bills', frequency: 'monthly' as const, day: 16, remindDays: null };
     // The old phone logged the 16th, so its next due date is already November.
     await importBackupRows(db, backupOf({ recurring: [{ ...base, nextDue: d(2026, 11, 16, 9) }] }), now);
     const [moved] = await loadRecurring(db);
@@ -302,7 +303,7 @@ describe('importBackupRows', () => {
 
 describe('updateRecurringRow', () => {
   const now = d(2026, 10, 16, 14);
-  const input = { title: 'Gym', amountCents: 2000, category: 'other', frequency: 'weekly' as const, day: 1 };
+  const input = { title: 'Gym', amountCents: 2000, category: 'other', frequency: 'weekly' as const, day: 1, remindDays: null };
 
   it('keeps the schedule when only the amount, note or category change', async () => {
     const { db } = await freshDb();
@@ -328,8 +329,41 @@ describe('updateRecurringRow', () => {
   });
 });
 
+describe('recurring reminders', () => {
+  const now = d(2026, 10, 16, 14);
+  const rent = { title: 'Rent', amountCents: 50000, category: 'bills', frequency: 'monthly' as const, day: 20, remindDays: 1 };
+
+  it('saves the reminder and loads it back', async () => {
+    const { db } = await freshDb();
+    await insertRecurring(db, rent, now);
+    assert.equal((await loadRecurring(db))[0].remindDays, 1);
+  });
+
+  it('changes or clears the reminder without moving the due date', async () => {
+    const { db } = await freshDb();
+    await insertRecurring(db, rent, now);
+    const [before] = await loadRecurring(db);
+    await updateRecurringRow(db, before.id, { ...rent, remindDays: 0 }, now);
+    assert.equal((await loadRecurring(db))[0].remindDays, 0);
+    await updateRecurringRow(db, before.id, { ...rent, remindDays: null }, now);
+    const [after] = await loadRecurring(db);
+    assert.equal(after.remindDays, null);
+    assert.equal(after.nextDue, before.nextDue);
+  });
+
+  it('survives a backup restore and pausing', async () => {
+    const { db } = await freshDb();
+    await importBackupRows(db, backupOf({ recurring: [{ id: 1, ...rent, nextDue: d(2026, 10, 20, 9), paused: false }] }), now);
+    const [item] = await loadRecurring(db);
+    assert.equal(item.remindDays, 1);
+    await setRecurringPausedRow(db, item.id, true, now);
+    await setRecurringPausedRow(db, item.id, false, now);
+    assert.equal((await loadRecurring(db))[0].remindDays, 1);
+  });
+});
+
 describe('pausing recurring items', () => {
-  const monthly = { title: 'Rent', amountCents: 50000, category: 'bills', frequency: 'monthly' as const, day: 1 };
+  const monthly = { title: 'Rent', amountCents: 50000, category: 'bills', frequency: 'monthly' as const, day: 1, remindDays: null };
 
   it('logs nothing while paused', async () => {
     const { db } = await freshDb();
