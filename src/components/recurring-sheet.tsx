@@ -30,7 +30,7 @@ import {
   type Frequency,
   type Recurring,
 } from '@/lib/recurring';
-import { ensureReminderPermission, sendTestReminder } from '@/lib/reminders';
+import { ensureReminderPermission, promptEnableNotifications, sendTestReminder } from '@/lib/reminders';
 
 type Props = {
   visible: boolean;
@@ -140,13 +140,14 @@ export function RecurringSheet({ visible, onClose }: Props) {
               accessibilityRole="button"
               hitSlop={8}
               onPress={async () => {
-                const sent = await sendTestReminder();
-                Alert.alert(
-                  sent ? 'Test sent' : 'Notifications are off',
-                  sent
-                    ? 'A notification will appear in a few seconds. Leave the app or pull down your notification shade to see it.'
-                    : "Turn on notifications for Gastos in your phone's Settings to get reminders."
-                );
+                if (await sendTestReminder()) {
+                  Alert.alert(
+                    'Test sent',
+                    'A notification will appear in a few seconds. Leave the app or pull down your notification shade to see it.'
+                  );
+                } else {
+                  promptEnableNotifications();
+                }
               }}>
               <ThemedText type="linkPrimary">Send a test notification</ThemedText>
             </Pressable>
@@ -187,10 +188,7 @@ function RecurringForm({ item, onDone }: FormProps) {
   async function chooseReminder(value: string) {
     // Ask for permission when it is first needed, not when the app opens.
     if (value !== 'off' && !(await ensureReminderPermission())) {
-      Alert.alert(
-        'Notifications are off',
-        "Turn on notifications for Gastos in your phone's Settings to get reminders."
-      );
+      promptEnableNotifications();
       setRemind('off');
       return;
     }

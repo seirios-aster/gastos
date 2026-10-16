@@ -1,3 +1,5 @@
+import { Alert, Linking } from 'react-native';
+
 import { getCategory, type Category } from './expenses';
 import { formatMoney } from './money';
 import { reminderTimes, type Recurring } from './recurring';
@@ -66,6 +68,26 @@ export async function ensureReminderPermission(): Promise<boolean> {
     console.warn('Could not ask for notification permission', error);
     return false;
   }
+}
+
+/**
+ * Tell the person notifications are off and offer to open the phone's settings for the app, since
+ * Android only shows its permission pop-up once and after that only Settings can turn them on.
+ */
+export function promptEnableNotifications() {
+  Alert.alert(
+    'Notifications are off',
+    'Allow notifications for Gastos in your phone\'s settings to get reminders. Tap Open Settings, then Notifications.',
+    [
+      { text: 'Not now', style: 'cancel' },
+      {
+        text: 'Open Settings',
+        onPress: () => {
+          Linking.openSettings().catch((error) => console.warn('Could not open Settings', error));
+        },
+      },
+    ]
+  );
 }
 
 function whenText(days: number): string {
