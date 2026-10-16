@@ -111,7 +111,6 @@ export default function TodayScreen() {
               amount={formatMoney(todayTotal, currency)}
               footer={`${today.length} ${today.length === 1 ? 'expense' : 'expenses'} · Yesterday ${formatMoney(yesterdayTotal, currency)}`}>
               <BudgetProgress
-                variant="compact"
                 spentCents={monthSpent}
                 budgetCents={budgetCents}
                 currency={currency}
