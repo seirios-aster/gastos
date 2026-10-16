@@ -12,6 +12,8 @@ import { useExpenses } from '@/context/expenses-context';
 import { useSheetNotice } from '@/hooks/use-sheet-notice';
 import { useTheme } from '@/hooks/use-theme';
 
+const deletedText = (count: number) => (count === 1 ? 'Expense deleted' : `${count} expenses deleted`);
+
 /** A snackbar above the tab bar that offers to bring back the expense that was just deleted. */
 export function UndoToast() {
   const theme = useTheme();
@@ -20,7 +22,7 @@ export function UndoToast() {
   const { notify, sheetProps } = useSheetNotice();
 
   useEffect(() => {
-    if (lastDeleted) AccessibilityInfo.announceForAccessibility('Expense deleted. Undo available.');
+    if (lastDeleted) AccessibilityInfo.announceForAccessibility(`${deletedText(lastDeleted.length)}. Undo available.`);
   }, [lastDeleted]);
 
   return (
@@ -34,7 +36,7 @@ export function UndoToast() {
             entering={FadeInDown.duration(200)}
             style={[styles.toast, { backgroundColor: theme.text }]}>
             <ThemedText type="small" themeColor="background" style={styles.message}>
-              Expense deleted
+              {deletedText(lastDeleted.length)}
             </ThemedText>
             <Pressable
               accessibilityRole="button"

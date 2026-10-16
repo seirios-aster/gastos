@@ -28,3 +28,25 @@ export const confirm = ({
   actions: [{ label: confirmLabel, destructive, onPress: onConfirm }],
   cancelLabel,
 });
+
+/** Asked before deleting the picked expenses; the Undo toast can bring them all back. */
+export const confirmDeleteExpenses = (count: number, onConfirm: () => void): SheetNotice =>
+  confirm({
+    title: count === 1 ? 'Delete this expense?' : `Delete ${count} expenses?`,
+    message: 'You can undo this for a few seconds afterwards.',
+    confirmLabel: count === 1 ? 'Delete' : `Delete ${count}`,
+    cancelLabel: 'Keep them',
+    destructive: true,
+    onConfirm,
+  });
+
+/** Asked before stopping the picked recurring items. There is no undo, but nothing logged is lost. */
+export const confirmStopRecurring = (count: number, onConfirm: () => void): SheetNotice =>
+  confirm({
+    title: count === 1 ? 'Stop this recurring expense?' : `Stop ${count} recurring expenses?`,
+    message: 'Expenses already logged stay in your history.',
+    confirmLabel: 'Stop repeating',
+    cancelLabel: 'Keep them',
+    destructive: true,
+    onConfirm,
+  });

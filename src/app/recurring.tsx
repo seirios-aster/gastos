@@ -5,33 +5,65 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ActionSheet } from '@/components/action-sheet';
 import { Button } from '@/components/button';
 import { HeaderActions } from '@/components/header-actions';
+import { confirmStopRecurring, info } from '@/components/notices';
 import { TEST_SENT, addedToday, notificationsOff } from '@/components/recurring/notices';
 import { RecurringEmpty } from '@/components/recurring/recurring-empty';
 import { RecurringFormSheet, type Editor } from '@/components/recurring/recurring-form-sheet';
 import { RecurringRow } from '@/components/recurring/recurring-row';
 import { UpcomingCard } from '@/components/recurring/upcoming-card';
+import { SelectionBar } from '@/components/selection-bar';
 import { SummaryCard } from '@/components/summary-card';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing, Touch } from '@/constants/theme';
 import { useExpenses } from '@/context/expenses-context';
 import { useNow } from '@/hooks/use-now';
+import { useSelection } from '@/hooks/use-selection';
 import { useSheetNotice } from '@/hooks/use-sheet-notice';
+import { tap } from '@/lib/haptics';
 import { formatMoney } from '@/lib/money';
 import { monthlyEquivalentCents, sortRecurring } from '@/lib/recurring';
 import { sendTestReminder } from '@/lib/reminders';
 
 export default function RecurringScreen() {
   const now = useNow();
-  const { recurring, currency } = useExpenses();
+  const { recurring, currency, deleteRecurrings } = useExpenses();
   // Messages here use the app's own sheet (the system pop-up ignores dark mode). The form has its
   // own inside its sheet: a second modal can't open over one that is already open.
   const { notify, sheetProps } = useSheetNotice();
   const [editor, setEditor] = useState<Editor | null>(null);
 
+  const selection = useSelection(recurring.map((r) => r.id));
   const sorted = sortRecurring(recurring);
   const active = sorted.filter((item) => !item.paused);
   const paused = sorted.filter((item) => item.paused);
+
+  /** Ask, then stop everything picked. */
+  function stopSelected() {
+    const ids = selection.ids;
+    notify(
+      confirmStopRecurring(ids.length, async () => {
+        try {
+          await deleteRecurrings(ids);
+          selection.clear();
+        } catch (error) {
+          console.warn('Could not stop the recurring expenses', error);
+          notify(info('Could not stop', 'Please try again.'));
+        }
+      })
+    );
+  }
+
+  /** The row props that pick items: tapping picks once picking has started, holding starts it. */
+  const pickProps = (item: (typeof recurring)[number]) => ({
+    onPress: () => (selection.selecting ? selection.toggle(item.id) : setEditor({ mode: 'edit', item })),
+    onLongPress: () => {
+      if (!selection.selecting) tap();
+      selection.toggle(item.id);
+    },
+    selecting: selection.selecting,
+    selected: selection.has(item.id),
+  });
 
   async function sendTest() {
     notify((await sendTestReminder()) ? TEST_SENT : notificationsOff());
@@ -73,12 +105,7 @@ export default function RecurringScreen() {
                     Active · {active.length}
                   </ThemedText>
                   {active.map((item) => (
-                    <RecurringRow
-                      key={item.id}
-                      item={item}
-                      now={now}
-                      onPress={() => setEditor({ mode: 'edit', item })}
-                    />
+                    <RecurringRow key={item.id} item={item} now={now} {...pickProps(item)} />
                   ))}
                 </View>
               )}
@@ -89,12 +116,7 @@ export default function RecurringScreen() {
                     Paused · {paused.length}
                   </ThemedText>
                   {paused.map((item) => (
-                    <RecurringRow
-                      key={item.id}
-                      item={item}
-                      now={now}
-                      onPress={() => setEditor({ mode: 'edit', item })}
-                    />
+                    <RecurringRow key={item.id} item={item} now={now} {...pickProps(item)} />
                   ))}
                   <ThemedText type="small" themeColor="textSecondary">
                     Nothing is logged while paused. Resuming doesn&apos;t add the days you missed.
@@ -116,6 +138,16 @@ export default function RecurringScreen() {
           )}
         </ScrollView>
       </SafeAreaView>
+
+      {selection.selecting && (
+        <SelectionBar
+          count={selection.count}
+          total={recurring.length}
+          onSelectAll={selection.selectAll}
+          onDelete={stopSelected}
+          onCancel={selection.clear}
+        />
+      )}
 
       <RecurringFormSheet
         editor={editor}
