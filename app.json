@@ -18,6 +18,10 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "allowBackup": false,
+      "blockedPermissions": [
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE"
+      ],
       "predictiveBackGestureEnabled": false,
       "package": "com.seiriosaster.gastos"
     },
@@ -38,8 +42,14 @@
       [
         "expo-image-picker",
         {
-          "cameraPermission": "Gastos uses the camera to scan receipts. Photos stay on your phone.",
-          "microphonePermission": false
+          "cameraPermission": "Gastos uses the camera to scan receipts. Photos stay on your phone."
+        }
+      ],
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Gastos listens only while you tap the mic, to turn your voice into an expense.",
+          "speechRecognitionPermission": "Gastos uses speech recognition to turn what you say into an expense."
         }
       ]
     ],

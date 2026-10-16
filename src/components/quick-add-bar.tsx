@@ -41,7 +41,7 @@ export function QuickAddBar({ onDraft }: Props) {
         setPhoto(null);
         onDraft(parseReceipt(lines, categories));
       } else {
-        // No text-recognition engine in this build: keep the photo in view while the user types.
+        // No text-recognition engine (Expo Go) or nothing readable: keep the photo in view while the user types.
         setPhoto(uri);
       }
     } catch (error) {
@@ -83,7 +83,7 @@ export function QuickAddBar({ onDraft }: Props) {
           <View style={styles.photoText}>
             <ThemedText type="smallBold">Receipt captured</ThemedText>
             <ThemedText type="small" themeColor="textSecondary">
-              Reading the total automatically comes with the full app. For now, type it below.
+              Could not read the total automatically. Type it below.
             </ThemedText>
             <Pressable accessibilityRole="button" hitSlop={8} onPress={() => setPhoto(null)}>
               <ThemedText type="linkPrimary">Dismiss</ThemedText>
