@@ -19,7 +19,7 @@ import {
 } from './recurring';
 
 /** Bump this and add a `version < N` block in `migrate` whenever the schema changes. */
-const SCHEMA_VERSION = 3;
+const SCHEMA_VERSION = 4;
 
 type ExpenseRow = {
   id: number;
@@ -40,6 +40,7 @@ type RecurringRow = {
   day: number;
   next_due: number;
   paused: number;
+  remind_days: number | null;
 };
 
 export async function migrate(db: SQLiteDatabase) {
@@ -93,6 +94,11 @@ export async function migrate(db: SQLiteDatabase) {
 
     if (version < 3) {
       await db.execAsync('ALTER TABLE recurring ADD COLUMN paused INTEGER NOT NULL DEFAULT 0;');
+    }
+
+    if (version < 4) {
+      // NULL means no reminder, so every existing item stays as it was.
+      await db.execAsync('ALTER TABLE recurring ADD COLUMN remind_days INTEGER;');
     }
 
     await db.execAsync(`PRAGMA user_version = ${SCHEMA_VERSION};`);
@@ -198,12 +204,13 @@ function recurringFromRow(row: RecurringRow): Recurring {
     day: row.day,
     nextDue: row.next_due,
     paused: row.paused === 1,
+    remindDays: row.remind_days ?? null,
   };
 }
 
 export async function loadRecurring(db: SQLiteDatabase): Promise<Recurring[]> {
   const rows = await db.getAllAsync<RecurringRow>(
-    'SELECT id, title, amount_cents, category, frequency, day, next_due, paused FROM recurring ORDER BY next_due, id'
+    'SELECT id, title, amount_cents, category, frequency, day, next_due, paused, remind_days FROM recurring ORDER BY next_due, id'
   );
   return rows.map(recurringFromRow);
 }
@@ -215,13 +222,14 @@ export async function insertRecurring(
 ): Promise<void> {
   const nextDue = nextOccurrence(input.frequency as Frequency, input.day, now);
   await db.runAsync(
-    'INSERT INTO recurring (title, amount_cents, category, frequency, day, next_due) VALUES (?, ?, ?, ?, ?, ?)',
+    'INSERT INTO recurring (title, amount_cents, category, frequency, day, next_due, remind_days) VALUES (?, ?, ?, ?, ?, ?, ?)',
     input.title,
     input.amountCents,
     input.category,
     input.frequency,
     input.day,
-    nextDue
+    nextDue,
+    input.remindDays
   );
 }
 
@@ -242,13 +250,14 @@ export async function updateRecurringRow(
     ? nextOccurrence(input.frequency as Frequency, input.day, now)
     : null;
   await db.runAsync(
-    'UPDATE recurring SET title = ?, amount_cents = ?, category = ?, frequency = ?, day = ?, next_due = COALESCE(?, next_due) WHERE id = ?',
+    'UPDATE recurring SET title = ?, amount_cents = ?, category = ?, frequency = ?, day = ?, next_due = COALESCE(?, next_due), remind_days = ? WHERE id = ?',
     input.title,
     input.amountCents,
     input.category,
     input.frequency,
     input.day,
     nextDue,
+    input.remindDays,
     id
   );
 }
@@ -378,8 +387,8 @@ export async function importBackupRows(
         nextDue = advance(item.frequency, item.day, nextDue);
       }
       const result = await db.runAsync(
-        `INSERT INTO recurring (title, amount_cents, category, frequency, day, next_due, paused)
-         SELECT ?, ?, ?, ?, ?, ?, ?
+        `INSERT INTO recurring (title, amount_cents, category, frequency, day, next_due, paused, remind_days)
+         SELECT ?, ?, ?, ?, ?, ?, ?, ?
          WHERE NOT EXISTS (
            SELECT 1 FROM recurring
            WHERE id <= ? AND title = ? AND amount_cents = ? AND frequency = ? AND day = ?
@@ -392,6 +401,7 @@ export async function importBackupRows(
           item.day,
           nextDue,
           item.paused ? 1 : 0,
+          item.remindDays,
           maxRecurringId,
           item.title,
           item.amountCents,

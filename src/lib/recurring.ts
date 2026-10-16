@@ -14,6 +14,8 @@ export type Recurring = {
   nextDue: number;
   /** A paused item logs nothing; resuming restarts from the next due date after that day. */
   paused: boolean;
+  /** Days before the due day to send a reminder (0 = on the day); null means no reminder. */
+  remindDays: number | null;
 };
 
 export type RecurringInput = Omit<Recurring, 'id' | 'nextDue' | 'paused'>;
@@ -94,6 +96,45 @@ export function dueOccurrences(
     return collectDues(frequency, day, recent, now, limit);
   }
   return result;
+}
+
+/** The reminder choices offered in the form, as days before the due day. */
+export const REMINDER_CHOICES = [
+  { days: null, label: 'Off' },
+  { days: 0, label: 'On the day' },
+  { days: 1, label: 'Day before' },
+] as const;
+
+/** Furthest ahead a reminder can be set; also the most a backup file may claim. */
+export const MAX_REMIND_DAYS = 7;
+
+export function describeReminder(remindDays: number | null): string {
+  if (remindDays === null) return 'No reminder';
+  if (remindDays === 0) return 'Reminder on the day';
+  return `Reminder ${remindDays} ${remindDays === 1 ? 'day' : 'days'} before`;
+}
+
+/**
+ * The next `count` moments (ms) a reminder should fire for this item, all at 9:00 local time and
+ * all still in the future. Paused items and items without a reminder have none. Only reminders
+ * after `now` are listed, so one whose moment already passed today waits for the next occurrence.
+ */
+export function reminderTimes(
+  item: Pick<Recurring, 'frequency' | 'day' | 'remindDays' | 'paused'>,
+  now: number,
+  count: number
+): number[] {
+  if (item.paused || item.remindDays === null) return [];
+  const times: number[] = [];
+  let due = nextOccurrence(item.frequency, item.day, now);
+  // A reminder a few days ahead can already be past for the first occurrence, so look a little further.
+  for (let i = 0; i < count + MAX_REMIND_DAYS + 2 && times.length < count; i++) {
+    const remindAt = new Date(due);
+    remindAt.setDate(remindAt.getDate() - item.remindDays);
+    if (remindAt.getTime() > now) times.push(remindAt.getTime());
+    due = advance(item.frequency, item.day, due);
+  }
+  return times;
 }
 
 export function ordinal(n: number): string {

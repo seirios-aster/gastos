@@ -4,11 +4,13 @@ import { describe, it } from 'node:test';
 import { addDays, startOfDay } from '../dates';
 import {
   advance,
+  describeReminder,
   describeSchedule,
   dueOccurrences,
   monthlyEquivalentCents,
   nextOccurrence,
   ordinal,
+  reminderTimes,
   type Frequency,
 } from '../recurring';
 
@@ -153,5 +155,63 @@ describe('monthlyEquivalentCents', () => {
   it('ignores paused items and handles an empty list', () => {
     assert.equal(monthlyEquivalentCents([item('monthly', 50000, true), item('weekly', 1200, true)]), 0);
     assert.equal(monthlyEquivalentCents([]), 0);
+  });
+});
+
+describe('reminderTimes', () => {
+  const monthly = { frequency: 'monthly' as Frequency, day: 15, paused: false };
+
+  it('has none when off or paused', () => {
+    assert.deepEqual(reminderTimes({ ...monthly, remindDays: null }, wed, 3), []);
+    assert.deepEqual(reminderTimes({ ...monthly, remindDays: 0, paused: true }, wed, 3), []);
+  });
+
+  it('fires at 9:00 on the due day', () => {
+    assert.deepEqual(reminderTimes({ ...monthly, remindDays: 0 }, wed, 3), [
+      d(2026, 10, 15, 9),
+      d(2026, 11, 15, 9),
+      d(2026, 12, 15, 9),
+    ]);
+  });
+
+  it('fires the day before at 9:00', () => {
+    // Oct 14 at 9:00 is already past (it is 15:00), so the first one is next month's.
+    assert.deepEqual(reminderTimes({ ...monthly, remindDays: 1 }, wed, 2), [
+      d(2026, 11, 14, 9),
+      d(2026, 12, 14, 9),
+    ]);
+    assert.deepEqual(reminderTimes({ ...monthly, remindDays: 1 }, d(2026, 10, 13, 20), 1), [d(2026, 10, 14, 9)]);
+  });
+
+  it('skips today when 9:00 has passed and keeps it when it has not', () => {
+    const today = { ...monthly, day: 14, remindDays: 0 };
+    assert.deepEqual(reminderTimes(today, d(2026, 10, 14, 15), 1), [d(2026, 11, 14, 9)]);
+    assert.deepEqual(reminderTimes(today, d(2026, 10, 14, 8), 1), [d(2026, 10, 14, 9)]);
+  });
+
+  it('follows weekly items', () => {
+    const weekly = { frequency: 'weekly' as Frequency, day: 1, paused: false, remindDays: 1 }; // Mondays
+    assert.deepEqual(reminderTimes(weekly, wed, 2), [d(2026, 10, 18, 9), d(2026, 10, 25, 9)]); // Sundays
+  });
+
+  it('lands on the last day of short months', () => {
+    const end = { frequency: 'monthly' as Frequency, day: 31, paused: false, remindDays: 1 };
+    assert.deepEqual(reminderTimes(end, d(2026, 1, 20), 2), [d(2026, 1, 30, 9), d(2026, 2, 27, 9)]);
+  });
+
+  it('never returns more than asked for, and only future moments', () => {
+    const times = reminderTimes({ ...monthly, remindDays: 7 }, wed, 12);
+    assert.equal(times.length, 12);
+    assert.ok(times.every((t) => t > wed));
+    assert.deepEqual([...times].sort((a, b) => a - b), times);
+  });
+});
+
+describe('describeReminder', () => {
+  it('words each choice', () => {
+    assert.equal(describeReminder(null), 'No reminder');
+    assert.equal(describeReminder(0), 'Reminder on the day');
+    assert.equal(describeReminder(1), 'Reminder 1 day before');
+    assert.equal(describeReminder(3), 'Reminder 3 days before');
   });
 });
