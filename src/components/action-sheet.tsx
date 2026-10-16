@@ -10,7 +10,19 @@ export type SheetAction = {
   label: string;
   /** A short second line under the label. */
   description?: string;
+  /** Shown in the danger color, for actions that remove something. */
+  destructive?: boolean;
   onPress: () => void;
+};
+
+/** What a screen keeps in state to show a message or confirmation in a sheet. */
+export type SheetNotice = {
+  title: string;
+  message?: string;
+  /** Leave out for a plain message that is only dismissed. */
+  actions?: SheetAction[];
+  /** The dismiss button's text; defaults to "Cancel". */
+  cancelLabel?: string;
 };
 
 type Props = {
@@ -18,6 +30,8 @@ type Props = {
   title: string;
   message?: string;
   actions: SheetAction[];
+  /** The dismiss button's text; use "OK" for a plain message. */
+  cancelLabel?: string;
   onClose: () => void;
 };
 
@@ -26,7 +40,7 @@ type Props = {
  * is always light and ignores dark mode). Tapping outside it, the Cancel button or the Android
  * Back button all close it without choosing anything.
  */
-export function ActionSheet({ visible, title, message, actions, onClose }: Props) {
+export function ActionSheet({ visible, title, message, actions, cancelLabel = 'Cancel', onClose }: Props) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
 
@@ -69,10 +83,15 @@ export function ActionSheet({ visible, title, message, actions, onClose }: Props
                 }}
                 style={({ pressed }) => [
                   styles.action,
-                  { backgroundColor: primary ? theme.accent : theme.backgroundSelected },
+                  {
+                    backgroundColor:
+                      primary && !action.destructive ? theme.accent : theme.backgroundSelected,
+                  },
                   pressed && styles.pressed,
                 ]}>
-                <ThemedText type="smallBold" themeColor={primary ? 'onAccent' : 'text'}>
+                <ThemedText
+                  type="smallBold"
+                  themeColor={action.destructive ? 'danger' : primary ? 'onAccent' : 'text'}>
                   {action.label}
                 </ThemedText>
                 {action.description ? (
@@ -89,10 +108,11 @@ export function ActionSheet({ visible, title, message, actions, onClose }: Props
 
           <Pressable
             accessibilityRole="button"
+            accessibilityLabel={cancelLabel}
             onPress={onClose}
             style={({ pressed }) => [styles.cancel, pressed && styles.pressed]}>
             <ThemedText type="smallBold" themeColor="textSecondary">
-              Cancel
+              {cancelLabel}
             </ThemedText>
           </Pressable>
         </ThemedView>

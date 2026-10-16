@@ -1,6 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
 import {
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -10,6 +9,7 @@ import {
   View,
 } from 'react-native';
 
+import { ActionSheet, type SheetNotice } from '@/components/action-sheet';
 import { CategoryChips } from '@/components/category-chips';
 import { FieldError } from '@/components/field-error';
 import { Segmented } from '@/components/segmented';
@@ -30,12 +30,26 @@ import {
   type Frequency,
   type Recurring,
 } from '@/lib/recurring';
-import { ensureReminderPermission, promptEnableNotifications, sendTestReminder } from '@/lib/reminders';
+import { ensureReminderPermission, openNotificationSettings, sendTestReminder } from '@/lib/reminders';
 
 type Props = {
   visible: boolean;
   onClose: () => void;
 };
+
+const NOTIFICATIONS_OFF: SheetNotice = {
+  title: 'Notifications are off',
+  message:
+    "Allow notifications for Gastos in your phone's settings to get reminders. Tap Open Settings, then Notifications.",
+  actions: [{ label: 'Open Settings', onPress: openNotificationSettings }],
+  cancelLabel: 'Not now',
+};
+
+const SOMETHING_WENT_WRONG = (title: string): SheetNotice => ({
+  title,
+  message: 'Something went wrong. Please try again.',
+  cancelLabel: 'OK',
+});
 
 /** Everything about recurring expenses on one screen, so Settings stays short however many there are. */
 export function RecurringSheet({ visible, onClose }: Props) {
@@ -43,6 +57,14 @@ export function RecurringSheet({ visible, onClose }: Props) {
   const { recurring, categories, currency } = useExpenses();
   const [editingId, setEditingId] = useState<number | null>(null);
   const [adding, setAdding] = useState(false);
+  // Messages use the app's own sheet, not the system pop-up, which ignores dark mode.
+  // The content is kept after closing so it doesn't go blank while the sheet fades out.
+  const [notice, setNotice] = useState<SheetNotice | null>(null);
+  const [noticeOpen, setNoticeOpen] = useState(false);
+  const notify = (next: SheetNotice) => {
+    setNotice(next);
+    setNoticeOpen(true);
+  };
 
   // Active items first, soonest due at the top; paused ones sink to the bottom.
   const sorted = useMemo(
@@ -78,7 +100,7 @@ export function RecurringSheet({ visible, onClose }: Props) {
           )}
 
           {adding ? (
-            <RecurringForm onDone={() => setAdding(false)} />
+            <RecurringForm notify={notify} onDone={() => setAdding(false)} />
           ) : (
             <Pressable
               accessibilityRole="button"
@@ -102,7 +124,14 @@ export function RecurringSheet({ visible, onClose }: Props) {
           {sorted.map((item) => {
             // The form opens in the row's place so the edit is where the person tapped.
             if (item.id === editingId) {
-              return <RecurringForm key={item.id} item={item} onDone={() => setEditingId(null)} />;
+              return (
+                <RecurringForm
+                  key={item.id}
+                  item={item}
+                  notify={notify}
+                  onDone={() => setEditingId(null)}
+                />
+              );
             }
             const cat = getCategory(categories, item.category);
             const label = item.title || cat.label;
@@ -141,12 +170,14 @@ export function RecurringSheet({ visible, onClose }: Props) {
               hitSlop={8}
               onPress={async () => {
                 if (await sendTestReminder()) {
-                  Alert.alert(
-                    'Test sent',
-                    'A notification will appear in a few seconds. Leave the app or pull down your notification shade to see it.'
-                  );
+                  notify({
+                    title: 'Test sent',
+                    message:
+                      'A notification will appear in a few seconds. Leave the app or pull down your notification shade to see it.',
+                    cancelLabel: 'OK',
+                  });
                 } else {
-                  promptEnableNotifications();
+                  notify(NOTIFICATIONS_OFF);
                 }
               }}>
               <ThemedText type="linkPrimary">Send a test notification</ThemedText>
@@ -154,6 +185,14 @@ export function RecurringSheet({ visible, onClose }: Props) {
           )}
         </ScrollView>
       </KeyboardAvoidingView>
+      <ActionSheet
+        visible={noticeOpen}
+        title={notice?.title ?? ''}
+        message={notice?.message}
+        actions={notice?.actions ?? []}
+        cancelLabel={notice?.cancelLabel}
+        onClose={() => setNoticeOpen(false)}
+      />
     </Sheet>
   );
 }
@@ -162,9 +201,11 @@ type FormProps = {
   /** The item being edited; leave out to add a new one. */
   item?: Recurring;
   onDone?: () => void;
+  /** Show a message or confirmation in the screen's sheet. */
+  notify: (notice: SheetNotice) => void;
 };
 
-function RecurringForm({ item, onDone }: FormProps) {
+function RecurringForm({ item, onDone, notify }: FormProps) {
   const theme = useTheme();
   const inputStyle = useInputStyle();
   const { categories, currency, addRecurring, updateRecurring, setRecurringPaused, deleteRecurring } =
@@ -188,7 +229,7 @@ function RecurringForm({ item, onDone }: FormProps) {
   async function chooseReminder(value: string) {
     // Ask for permission when it is first needed, not when the app opens.
     if (value !== 'off' && !(await ensureReminderPermission())) {
-      promptEnableNotifications();
+      notify(NOTIFICATIONS_OFF);
       setRemind('off');
       return;
     }
@@ -226,7 +267,7 @@ function RecurringForm({ item, onDone }: FormProps) {
       }
     } catch (failure) {
       console.warn('Could not save recurring expense', failure);
-      Alert.alert('Could not save', 'Something went wrong. Please try again.');
+      notify(SOMETHING_WENT_WRONG('Could not save'));
     } finally {
       saving.current = false;
     }
@@ -240,7 +281,7 @@ function RecurringForm({ item, onDone }: FormProps) {
       onDone?.();
     } catch (failure) {
       console.warn('Could not change the recurring expense', failure);
-      Alert.alert('Could not update', 'Something went wrong. Please try again.');
+      notify(SOMETHING_WENT_WRONG('Could not update'));
     } finally {
       saving.current = false;
     }
@@ -248,17 +289,21 @@ function RecurringForm({ item, onDone }: FormProps) {
 
   function confirmStop(current: Recurring) {
     const label = current.title || getCategory(categories, current.category).label;
-    Alert.alert(`Stop “${label}”?`, 'Expenses already logged stay in your history.', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Stop repeating',
-        style: 'destructive',
-        onPress: () => {
-          void deleteRecurring(current.id);
-          onDone?.();
+    notify({
+      title: `Stop “${label}”?`,
+      message: 'Expenses already logged stay in your history.',
+      actions: [
+        {
+          label: 'Stop repeating',
+          destructive: true,
+          onPress: () => {
+            void deleteRecurring(current.id);
+            onDone?.();
+          },
         },
-      },
-    ]);
+      ],
+      cancelLabel: 'Keep it',
+    });
   }
 
   return (
