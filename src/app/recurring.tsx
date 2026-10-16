@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ActionSheet } from '@/components/action-sheet';
 import { Button } from '@/components/button';
 import { HeaderActions } from '@/components/header-actions';
-import { NOTIFICATIONS_OFF, TEST_SENT, addedToday } from '@/components/recurring/notices';
+import { TEST_SENT, addedToday, notificationsOff } from '@/components/recurring/notices';
 import { RecurringEmpty } from '@/components/recurring/recurring-empty';
 import { RecurringFormSheet, type Editor } from '@/components/recurring/recurring-form-sheet';
 import { RecurringRow } from '@/components/recurring/recurring-row';
@@ -34,7 +34,7 @@ export default function RecurringScreen() {
   const paused = sorted.filter((item) => item.paused);
 
   async function sendTest() {
-    notify((await sendTestReminder()) ? TEST_SENT : NOTIFICATIONS_OFF);
+    notify((await sendTestReminder()) ? TEST_SENT : notificationsOff());
   }
 
   return (

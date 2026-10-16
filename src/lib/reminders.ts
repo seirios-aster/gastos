@@ -27,12 +27,37 @@ function load(): NotificationsModule | null {
   return cached;
 }
 
+/** Android only (ignored elsewhere). A failure here must never be mistaken for "notifications off". */
 async function ensureChannel(notifications: NotificationsModule) {
-  // Android only; the call is ignored elsewhere. The permission prompt on Android 13+ also needs it.
-  await notifications.setNotificationChannelAsync(CHANNEL_ID, {
-    name: 'Recurring expense reminders',
-    importance: notifications.AndroidImportance.DEFAULT,
-  });
+  try {
+    await notifications.setNotificationChannelAsync(CHANNEL_ID, {
+      name: 'Recurring expense reminders',
+      importance: notifications.AndroidImportance.DEFAULT,
+    });
+  } catch (error) {
+    console.warn('Could not create the reminders channel', error);
+  }
+}
+
+type Permission = Awaited<ReturnType<NotificationsModule['getPermissionsAsync']>>;
+
+/**
+ * Whether the phone lets this app show notifications. Android 13+ reports `granted` from the
+ * runtime permission alone, which can stay "denied" even after the person switched notifications
+ * on in the phone's settings (Xiaomi's settings page does this). Its importance reading follows
+ * that switch: 0 means blocked, anything else means allowed.
+ */
+function isAllowed(permission: Permission): boolean {
+  if (permission.granted) return true;
+  const importance = permission.android?.importance;
+  return typeof importance === 'number' && importance !== 0;
+}
+
+/** What the phone last said about permission; shown in the "off" message so a failure can be traced. */
+let lastPermissionDetail = '';
+
+export function permissionDetail(): string {
+  return lastPermissionDetail;
 }
 
 /** Call once at startup so reminders also show while the app is open. */
@@ -57,15 +82,21 @@ export async function configureReminders() {
 /** Ask for notification permission if needed. Returns whether reminders can be shown. */
 export async function ensureReminderPermission(): Promise<boolean> {
   const notifications = load();
-  if (!notifications) return false;
+  if (!notifications) {
+    lastPermissionDetail = 'the notifications module could not be loaded';
+    return false;
+  }
   try {
     await ensureChannel(notifications);
-    const current = await notifications.getPermissionsAsync();
-    if (current.granted) return true;
-    if (!current.canAskAgain) return false;
-    return (await notifications.requestPermissionsAsync()).granted;
+    let current = await notifications.getPermissionsAsync();
+    if (!isAllowed(current) && current.canAskAgain) {
+      current = await notifications.requestPermissionsAsync();
+    }
+    lastPermissionDetail = `granted=${current.granted}, status=${current.status}, canAskAgain=${current.canAskAgain}, importance=${current.android?.importance ?? 'n/a'}`;
+    return isAllowed(current);
   } catch (error) {
     console.warn('Could not ask for notification permission', error);
+    lastPermissionDetail = `error: ${error instanceof Error ? error.message : String(error)}`;
     return false;
   }
 }
@@ -92,7 +123,7 @@ async function schedule(
   // Everything pending belongs to this app's reminders, so start clean and schedule it all again.
   await notifications.cancelAllScheduledNotificationsAsync();
   if (!items.some((item) => !item.paused && item.remindDays !== null)) return;
-  if (!(await notifications.getPermissionsAsync()).granted) return;
+  if (!isAllowed(await notifications.getPermissionsAsync())) return;
 
   const now = Date.now();
   // Soonest first, so if the cap bites it drops the furthest-away ones.

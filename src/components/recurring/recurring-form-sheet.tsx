@@ -16,7 +16,7 @@ import { TemplateChips } from '@/components/recurring/template-chips';
 import { FieldError } from '@/components/field-error';
 import {
   confirmStop,
-  NOTIFICATIONS_OFF,
+  notificationsOff,
   somethingWentWrong,
 } from '@/components/recurring/notices';
 import { Segmented } from '@/components/segmented';
@@ -152,7 +152,7 @@ function RecurringForm({ item, template, notify, onDone, onAdded }: FormProps) {
   async function chooseReminder(value: string) {
     // Ask for permission when it is first needed, not when the app opens.
     if (value !== 'off' && !(await ensureReminderPermission())) {
-      notify(NOTIFICATIONS_OFF);
+      notify(notificationsOff());
       setRemind('off');
       return;
     }

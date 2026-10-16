@@ -1,13 +1,15 @@
 import type { SheetNotice } from '@/components/action-sheet';
-import { openNotificationSettings } from '@/lib/reminders';
+import { openNotificationSettings, permissionDetail } from '@/lib/reminders';
 
-export const NOTIFICATIONS_OFF: SheetNotice = {
+/** Built when needed, so it can include what the phone just reported (useful if turning it on does not help). */
+export const notificationsOff = (): SheetNotice => ({
   title: 'Notifications are off',
   message:
-    "Allow notifications for Gastos in your phone's settings to get reminders. Tap Open Settings, then Notifications.",
+    "Allow notifications for Gastos in your phone's settings to get reminders. Tap Open Settings, then Notifications." +
+    (permissionDetail() ? `\n\nPhone says: ${permissionDetail()}` : ''),
   actions: [{ label: 'Open Settings', onPress: openNotificationSettings }],
   cancelLabel: 'Not now',
-};
+});
 
 export const TEST_SENT: SheetNotice = {
   title: 'Test sent',
