@@ -1,7 +1,13 @@
+import { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
+import { Numeric, ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { budgetStatus, dailyAllowanceCents } from '@/lib/budget';
@@ -13,13 +19,36 @@ type Props = {
   currency: string;
   /** Pass the current time to also show a per-day allowance (only for the running month). */
   allowanceNow?: number;
+  /**
+   * compact: just the sentence and the bar (Today).
+   * full: "Monthly budget" and "spent of budget" on top, then the bar and the sentence (History).
+   */
+  variant?: 'compact' | 'full';
 };
 
-export function BudgetProgress({ spentCents, budgetCents, currency, allowanceNow }: Props) {
+/**
+ * How much of the monthly budget is used. Sits inside a SummaryCard, which gives it its rounded
+ * bottom edge. Renders nothing without a budget. A screen reader gets one progress bar.
+ */
+export function BudgetProgress({
+  spentCents,
+  budgetCents,
+  currency,
+  allowanceNow,
+  variant = 'full',
+}: Props) {
   const theme = useTheme();
+  const status = budgetStatus(spentCents, budgetCents);
+  const fill = useSharedValue(0);
+
+  // The bar grows to its value when it appears and whenever the value changes.
+  useEffect(() => {
+    fill.set(withTiming(status.ratio, { duration: 450, easing: Easing.out(Easing.cubic) }));
+  }, [fill, status.ratio]);
+  const fillStyle = useAnimatedStyle(() => ({ width: `${fill.get() * 100}%` }));
+
   if (budgetCents <= 0) return null;
 
-  const status = budgetStatus(spentCents, budgetCents);
   const color =
     status.tone === 'over' ? theme.danger : status.tone === 'warn' ? theme.warning : theme.accent;
 
@@ -31,35 +60,55 @@ export function BudgetProgress({ spentCents, budgetCents, currency, allowanceNow
     if (allowanceNow !== undefined) {
       message += ` · about ${formatMoney(dailyAllowanceCents(status.remainingCents, allowanceNow), currency)}/day`;
     }
+    // The bar's color change alone is not enough: say it in words too.
+    if (status.tone === 'warn') message = `Almost at your limit · ${message}`;
   }
+  const spentOf = `${formatMoney(spentCents, currency)} of ${formatMoney(budgetCents, currency)}`;
+
+  const sentence = (
+    <ThemedText type="small" style={[Numeric, status.tone === 'ok' ? null : { color }]}>
+      {message}
+    </ThemedText>
+  );
+  const bar = (
+    <View style={[styles.track, { backgroundColor: theme.backgroundSelected }]}>
+      <Animated.View style={[styles.fill, { backgroundColor: color }, fillStyle]} />
+    </View>
+  );
 
   return (
-    <ThemedView
-      type="backgroundElement"
-      style={styles.card}
+    <View
       accessible
-      accessibilityLabel={`Budget: spent ${formatMoney(spentCents, currency)} of ${formatMoney(budgetCents, currency)}. ${message}`}>
-      <View style={styles.top}>
-        <ThemedText type="smallBold" style={styles.title}>
-          Monthly budget
-        </ThemedText>
-        <ThemedText type="small" themeColor="textSecondary">
-          {formatMoney(spentCents, currency)} of {formatMoney(budgetCents, currency)}
-        </ThemedText>
-      </View>
-      <View style={[styles.track, { backgroundColor: theme.backgroundSelected }]}>
-        <View style={[styles.fill, { backgroundColor: color, width: `${status.ratio * 100}%` }]} />
-      </View>
-      <ThemedText type="small" style={status.tone === 'over' ? { color } : undefined}>
-        {message}
-      </ThemedText>
-    </ThemedView>
+      accessibilityRole="progressbar"
+      accessibilityValue={{ min: 0, max: 100, now: Math.round(status.ratio * 100) }}
+      accessibilityLabel={`Budget: spent ${spentOf}. ${message}`}
+      style={[styles.strip, { backgroundColor: theme.backgroundElement }]}>
+      {variant === 'full' ? (
+        <>
+          {/* Wraps, so on a narrow screen the amounts drop to their own line instead of squeezing the title. */}
+          <View style={styles.top}>
+            <ThemedText type="smallBold" style={styles.title}>
+              Monthly budget
+            </ThemedText>
+            <ThemedText type="small" themeColor="textSecondary" style={Numeric}>
+              {spentOf}
+            </ThemedText>
+          </View>
+          {bar}
+          {sentence}
+        </>
+      ) : (
+        <>
+          {sentence}
+          {bar}
+        </>
+      )}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  card: { borderRadius: Spacing.four, padding: Spacing.three, gap: Spacing.two },
-  // Wrap, so on a narrow screen the amounts drop to their own line instead of squeezing the title.
+  strip: { paddingHorizontal: Spacing.three, paddingVertical: Spacing.mid, gap: Spacing.two },
   top: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -68,6 +117,6 @@ const styles = StyleSheet.create({
     columnGap: Spacing.two,
   },
   title: { flexShrink: 0 },
-  track: { height: 10, borderRadius: 5, overflow: 'hidden' },
-  fill: { height: 10, borderRadius: 5 },
+  track: { height: 8, borderRadius: 4, overflow: 'hidden' },
+  fill: { height: 8, borderRadius: 4 },
 });

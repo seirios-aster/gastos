@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, StyleSheet, TextInput, View } from 'react-native';
 
+import { Button } from '@/components/button';
 import { Sheet } from '@/components/sheet';
-import { ThemedText } from '@/components/themed-text';
-import { Spacing } from '@/constants/theme';
+import { Numeric, ThemedText } from '@/components/themed-text';
+import { Radius, Spacing } from '@/constants/theme';
 import { useExpenses } from '@/context/expenses-context';
 import { useTheme } from '@/hooks/use-theme';
 import { getCategory } from '@/lib/expenses';
@@ -66,7 +67,7 @@ export function VoiceSheet({ visible, onClose, onUse }: Props) {
               <ThemedText type="small" themeColor="textSecondary">
                 I understood
               </ThemedText>
-              <ThemedText type="subtitle" style={styles.amount}>
+              <ThemedText type="heading" style={Numeric}>
                 {ready ? formatMoney(draft.amountCents!, currency) : 'No amount yet'}
               </ThemedText>
               <ThemedText themeColor="textSecondary">
@@ -77,20 +78,7 @@ export function VoiceSheet({ visible, onClose, onUse }: Props) {
             </View>
           ) : null}
 
-          <Pressable
-            accessibilityRole="button"
-            disabled={!ready}
-            onPress={use}
-            style={({ pressed }) => [
-              styles.button,
-              { backgroundColor: theme.accent },
-              !ready && styles.disabled,
-              pressed && styles.pressed,
-            ]}>
-            <ThemedText type="smallBold" themeColor="onAccent">
-              Use this
-            </ThemedText>
-          </Pressable>
+          <Button label="Use this" disabled={!ready} onPress={use} />
         </View>
       </KeyboardAvoidingView>
     </Sheet>
@@ -101,18 +89,10 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   body: { paddingHorizontal: Spacing.four, gap: Spacing.three },
   input: {
-    borderRadius: Spacing.three - 4,
+    borderRadius: Radius.control,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.three,
-    fontSize: 18,
+    fontSize: 16,
   },
-  preview: { borderRadius: Spacing.three, padding: Spacing.three, gap: Spacing.one },
-  amount: { fontSize: 28, lineHeight: 36 },
-  button: {
-    alignItems: 'center',
-    borderRadius: Spacing.three - 4,
-    paddingVertical: Spacing.three - 2,
-  },
-  disabled: { opacity: 0.4 },
-  pressed: { opacity: 0.8 },
+  preview: { borderRadius: Radius.row, padding: Spacing.three, gap: Spacing.one },
 });

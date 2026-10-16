@@ -1,10 +1,11 @@
 import { useRef, useState } from 'react';
 import { Alert, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
+import { Button } from '@/components/button';
 import { FieldError } from '@/components/field-error';
 import { Section } from '@/components/settings/section';
 import { ThemedText } from '@/components/themed-text';
-import { Spacing } from '@/constants/theme';
+import { Radius, Spacing, Touch } from '@/constants/theme';
 import { useExpenses } from '@/context/expenses-context';
 import { useInputStyle } from '@/hooks/use-input-style';
 import { useTheme } from '@/hooks/use-theme';
@@ -98,18 +99,12 @@ export function CategoriesSection() {
           }}
           maxLength={20}
           placeholder="New category name"
+          accessibilityLabel="New category name"
           placeholderTextColor={theme.textSecondary}
           onSubmitEditing={add}
           returnKeyType="done"
         />
-        <Pressable
-          accessibilityRole="button"
-          onPress={add}
-          style={[styles.addButton, { backgroundColor: theme.accent }]}>
-          <ThemedText type="smallBold" themeColor="onAccent">
-            Add
-          </ThemedText>
-        </Pressable>
+        <Button label="Add" onPress={add} />
       </View>
       {error ? <FieldError>{error}</FieldError> : null}
     </Section>
@@ -122,24 +117,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.two,
-    paddingHorizontal: Spacing.three - 2,
+    paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
-    borderRadius: 999,
+    borderRadius: Radius.pill,
   },
   // The negative margin lets the 44dp target overlap the chip's padding instead of growing the chip.
   deleteButton: {
-    minWidth: 44,
-    minHeight: 44,
+    minWidth: Touch.min,
+    minHeight: Touch.min,
     alignItems: 'center',
     justifyContent: 'center',
     margin: -Spacing.two,
   },
   addRow: { flexDirection: 'row', gap: Spacing.two, alignItems: 'center' },
-  emojiInput: { minWidth: 60, textAlign: 'center' },
+  // A fixed width, so the name field gets the rest on every screen (it collapsed in the web preview).
+  emojiInput: { width: 64, textAlign: 'center' },
   nameInput: { flex: 1, minWidth: 0 },
-  addButton: {
-    borderRadius: 12,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.three - 2,
-  },
 });

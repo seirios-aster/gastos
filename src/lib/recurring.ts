@@ -1,4 +1,4 @@
-import { addDays, startOfDay } from './dates';
+import { addDays, daysBetween, startOfDay } from './dates';
 
 export type Frequency = 'weekly' | 'monthly';
 
@@ -149,12 +149,115 @@ export function describeSchedule(item: Pick<Recurring, 'frequency' | 'day'>): st
     : `Monthly on the ${ordinal(item.day)}`;
 }
 
+/** The short form for a list row: "Every Mon" or "Monthly · 17th". The long form is for screen readers. */
+export function shortSchedule(item: Pick<Recurring, 'frequency' | 'day'>): string {
+  return item.frequency === 'weekly'
+    ? `Every ${WEEKDAYS[item.day]}`
+    : `Monthly · ${ordinal(item.day)}`;
+}
+
 /** What the active items cost in a typical month (a weekly item counts as 52/12 payments a month). */
 export function monthlyEquivalentCents(
-  items: Pick<Recurring, 'frequency' | 'amountCents' | 'paused'>[]
+  items: readonly Pick<Recurring, 'frequency' | 'amountCents' | 'paused'>[]
 ): number {
   const total = items
     .filter((item) => !item.paused)
     .reduce((sum, item) => sum + (item.frequency === 'weekly' ? (item.amountCents * 52) / 12 : item.amountCents), 0);
   return Math.round(total);
+}
+
+type Timed = Pick<Recurring, 'frequency' | 'day' | 'nextDue' | 'paused'>;
+
+/** One future charge: which item, and when (ms, 9:00 local on the due day). */
+export type Upcoming<T> = { item: T; due: number };
+
+/** Active items first with the soonest due at the top; paused ones sink to the bottom. */
+export function sortRecurring<T extends Pick<Recurring, 'id' | 'paused' | 'nextDue'>>(items: readonly T[]): T[] {
+  return [...items].sort((a, b) => Number(a.paused) - Number(b.paused) || a.nextDue - b.nextDue || a.id - b.id);
+}
+
+/**
+ * Every charge that falls from today through the next `days` calendar days (today counts as day 1),
+ * soonest first. Paused items have none. It starts from each item's own `nextDue`, so it agrees
+ * with what auto-logging will do; a `nextDue` already in the past (about to be logged, or a clock
+ * that moved) restarts from the first occurrence on or after today instead.
+ */
+export function upcomingOccurrences<T extends Timed>(items: readonly T[], now: number, days = 30): Upcoming<T>[] {
+  const end = addDays(startOfDay(now), days);
+  const found: (Upcoming<T> & { index: number })[] = [];
+  items.forEach((item, index) => {
+    if (item.paused) return;
+    let due =
+      startOfDay(item.nextDue) >= startOfDay(now)
+        ? item.nextDue
+        : nextOccurrence(item.frequency, item.day, now);
+    // One charge a day at most, so `days` rounds is always enough.
+    for (let i = 0; i <= days && due < end; i++) {
+      found.push({ item, due, index });
+      due = advance(item.frequency, item.day, due);
+    }
+  });
+  found.sort((a, b) => a.due - b.due || a.index - b.index);
+  return found.map(({ item, due }) => ({ item, due }));
+}
+
+/** Money leaving on each of the next `days` days (index 0 is today): the bars of a timeline chart. */
+export function upcomingDailyTotals(
+  items: readonly (Timed & Pick<Recurring, 'amountCents'>)[],
+  now: number,
+  days = 30
+): number[] {
+  const totals = new Array<number>(days).fill(0);
+  for (const { item, due } of upcomingOccurrences(items, now, days)) {
+    totals[daysBetween(now, due)] += item.amountCents;
+  }
+  return totals;
+}
+
+export type RecurringSummary<T> = {
+  active: number;
+  paused: number;
+  /** About what the active items cost in a typical month. */
+  monthlyCents: number;
+  /** What actually leaves in the next `days` days. */
+  upcomingCents: number;
+  /** The very next charge, even when it is further away than `days`; null when nothing is active. */
+  next: Upcoming<T> | null;
+  /** Active items that have a reminder. */
+  reminders: number;
+};
+
+/** The numbers at the top of the Recurring screen. */
+export function summarizeRecurring<T extends Timed & Pick<Recurring, 'amountCents' | 'remindDays'>>(
+  items: readonly T[],
+  now: number,
+  days = 30
+): RecurringSummary<T> {
+  const active = items.filter((item) => !item.paused);
+  // A monthly item on the 31st can be 31 days between charges (Dec 31 -> Jan 31), so look 32 days ahead for "next".
+  const ahead = upcomingOccurrences(items, now, Math.max(days, 32));
+  return {
+    active: active.length,
+    paused: items.length - active.length,
+    monthlyCents: monthlyEquivalentCents(items),
+    upcomingCents: ahead
+      .filter(({ due }) => daysBetween(now, due) < days)
+      .reduce((sum, { item }) => sum + item.amountCents, 0),
+    next: ahead[0] ?? null,
+    reminders: active.filter((item) => item.remindDays !== null).length,
+  };
+}
+
+/**
+ * How many active items come due from today through `days` days ahead. Anything already due is
+ * logged the moment the app opens, so this counts what is coming up, never what is overdue. It is
+ * the number on the Recurring tab's badge.
+ */
+export function dueSoonCount(
+  items: readonly Pick<Recurring, 'nextDue' | 'paused'>[],
+  now: number,
+  days: number
+): number {
+  const horizon = startOfDay(addDays(now, days + 1)); // the first moment after the window
+  return items.filter((item) => !item.paused && item.nextDue < horizon).length;
 }

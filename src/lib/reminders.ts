@@ -1,3 +1,5 @@
+import { Linking } from 'react-native';
+
 import { getCategory, type Category } from './expenses';
 import { formatMoney } from './money';
 import { reminderTimes, type Recurring } from './recurring';
@@ -66,6 +68,11 @@ export async function ensureReminderPermission(): Promise<boolean> {
     console.warn('Could not ask for notification permission', error);
     return false;
   }
+}
+
+/** Open the phone's settings page for this app, where notifications can be turned on. */
+export function openNotificationSettings() {
+  Linking.openSettings().catch((error) => console.warn('Could not open Settings', error));
 }
 
 function whenText(days: number): string {

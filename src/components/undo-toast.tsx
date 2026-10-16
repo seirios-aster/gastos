@@ -5,7 +5,7 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { BottomTabInset, MaxContentWidth, Radius, Spacing, Touch } from '@/constants/theme';
 import { useExpenses } from '@/context/expenses-context';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -79,18 +79,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.two,
-    borderRadius: Spacing.four,
+    borderRadius: Radius.card,
     paddingVertical: Spacing.one,
     paddingLeft: Spacing.three,
     paddingRight: Spacing.one,
   },
   message: { flex: 1 },
   undo: {
-    minHeight: 44,
+    minHeight: Touch.min,
     justifyContent: 'center',
-    borderRadius: Spacing.three,
+    borderRadius: Radius.row,
     paddingHorizontal: Spacing.three,
   },
-  dismiss: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
+  dismiss: { minWidth: Touch.min, minHeight: Touch.min, alignItems: 'center', justifyContent: 'center' },
   pressed: { opacity: 0.8 },
 });

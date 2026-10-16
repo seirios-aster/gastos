@@ -7,11 +7,18 @@ import {
   describeReminder,
   describeSchedule,
   dueOccurrences,
+  dueSoonCount,
   monthlyEquivalentCents,
   nextOccurrence,
   ordinal,
   reminderTimes,
+  shortSchedule,
+  sortRecurring,
+  summarizeRecurring,
+  upcomingDailyTotals,
+  upcomingOccurrences,
   type Frequency,
+  type Recurring,
 } from '../recurring';
 
 const d = (y: number, m: number, day: number, h = 12) => new Date(y, m - 1, day, h).getTime();
@@ -213,5 +220,181 @@ describe('describeReminder', () => {
     assert.equal(describeReminder(0), 'Reminder on the day');
     assert.equal(describeReminder(1), 'Reminder 1 day before');
     assert.equal(describeReminder(3), 'Reminder 3 days before');
+  });
+});
+
+// A full item for the screen helpers; only what a test cares about needs overriding.
+const item = (over: Partial<Recurring> & Pick<Recurring, 'id'>): Recurring => ({
+  title: '',
+  amountCents: 1000,
+  category: 'bills',
+  frequency: 'monthly',
+  day: 1,
+  nextDue: d(2026, 11, 1, 9),
+  paused: false,
+  remindDays: null,
+  ...over,
+});
+
+describe('sortRecurring', () => {
+  it('puts active items first, soonest due at the top, and paused ones last', () => {
+    const a = item({ id: 1, nextDue: d(2026, 10, 30, 9) });
+    const b = item({ id: 2, nextDue: d(2026, 10, 20, 9) });
+    const c = item({ id: 3, nextDue: d(2026, 10, 15, 9), paused: true });
+    const input = [a, c, b];
+    assert.deepEqual(sortRecurring(input).map((x) => x.id), [2, 1, 3]);
+    assert.deepEqual(input.map((x) => x.id), [1, 3, 2]); // the original list is left alone
+  });
+
+  it('breaks ties by id so the order never flickers', () => {
+    const same = d(2026, 10, 20, 9);
+    assert.deepEqual(
+      sortRecurring([item({ id: 9, nextDue: same }), item({ id: 4, nextDue: same })]).map((x) => x.id),
+      [4, 9]
+    );
+  });
+
+  it('copes with an empty list', () => {
+    assert.deepEqual(sortRecurring([]), []);
+  });
+});
+
+describe('upcomingOccurrences', () => {
+  it('lists every weekly charge in the window, soonest first', () => {
+    const mondays = item({ id: 1, frequency: 'weekly', day: 1, nextDue: d(2026, 10, 19, 9) });
+    assert.deepEqual(
+      upcomingOccurrences([mondays], wed, 30).map((u) => u.due),
+      [d(2026, 10, 19, 9), d(2026, 10, 26, 9), d(2026, 11, 2, 9), d(2026, 11, 9, 9)]
+    );
+  });
+
+  it('includes day 30 of the window and leaves out day 31', () => {
+    // wed is Oct 14, so the window is Oct 14 .. Nov 12.
+    const edge = item({ id: 1, nextDue: d(2026, 11, 12, 9), day: 12 });
+    const past = item({ id: 2, nextDue: d(2026, 11, 13, 9), day: 13 });
+    assert.deepEqual(upcomingOccurrences([edge, past], wed, 30).map((u) => u.item.id), [1]);
+  });
+
+  it('counts today and clamps day 31 in short months', () => {
+    const today = item({ id: 1, nextDue: d(2026, 10, 14, 9), day: 14 });
+    const end = item({ id: 2, day: 31, nextDue: d(2026, 10, 31, 9) });
+    // 60 days from Oct 14 reaches Dec 12, so neither item's December charge is in.
+    assert.deepEqual(
+      upcomingOccurrences([today, end], wed, 60).map((u) => [u.item.id, u.due]),
+      [
+        [1, d(2026, 10, 14, 9)],
+        [2, d(2026, 10, 31, 9)],
+        [1, d(2026, 11, 14, 9)],
+        [2, d(2026, 11, 30, 9)], // the 31st lands on the 30th
+      ]
+    );
+  });
+
+  it('has nothing for paused items or an empty list', () => {
+    assert.deepEqual(upcomingOccurrences([item({ id: 1, paused: true })], wed, 30), []);
+    assert.deepEqual(upcomingOccurrences([], wed, 30), []);
+  });
+
+  it('restarts from today when nextDue is already in the past', () => {
+    const stale = item({ id: 1, frequency: 'weekly', day: 5, nextDue: d(2026, 9, 1, 9) }); // Fridays
+    assert.equal(upcomingOccurrences([stale], wed, 7)[0].due, d(2026, 10, 16, 9));
+  });
+
+  it('orders different items by date, and equal dates by their order in the list', () => {
+    const a = item({ id: 1, nextDue: d(2026, 10, 20, 9), day: 20 });
+    const b = item({ id: 2, nextDue: d(2026, 10, 16, 9), day: 16 });
+    const c = item({ id: 3, nextDue: d(2026, 10, 20, 9), day: 20 });
+    assert.deepEqual(upcomingOccurrences([a, b, c], wed, 7).map((u) => u.item.id), [2, 1, 3]);
+  });
+
+  it('hands back the very same item objects', () => {
+    const only = item({ id: 1, nextDue: d(2026, 10, 20, 9), day: 20 });
+    assert.equal(upcomingOccurrences([only], wed, 30)[0].item, only);
+  });
+});
+
+describe('upcomingDailyTotals', () => {
+  it('puts each charge on its day, with today at index 0', () => {
+    const rent = item({ id: 1, amountCents: 50000, nextDue: d(2026, 10, 14, 9), day: 14 }); // today
+    const net = item({ id: 2, amountCents: 129900, nextDue: d(2026, 10, 20, 9), day: 20 });
+    const same = item({ id: 3, amountCents: 100, nextDue: d(2026, 10, 20, 9), day: 20 });
+    const totals = upcomingDailyTotals([rent, net, same], wed, 30);
+    assert.equal(totals.length, 30);
+    assert.equal(totals[0], 50000);
+    assert.equal(totals[6], 130000); // Oct 20: two items on one day
+    assert.equal(totals.filter((x) => x > 0).length, 2); // the November repeats fall after day 30
+  });
+
+  it('adds up to the same money as the charge list', () => {
+    const weekly = item({ id: 1, amountCents: 700, frequency: 'weekly', day: 1, nextDue: d(2026, 10, 19, 9) });
+    const totals = upcomingDailyTotals([weekly], wed, 30);
+    assert.equal(totals.reduce((s, x) => s + x, 0), 4 * 700);
+  });
+});
+
+describe('summarizeRecurring', () => {
+  it('counts, totals and finds the next charge', () => {
+    const rent = item({ id: 1, amountCents: 1500000, day: 1, nextDue: d(2026, 11, 1, 9), remindDays: 1 });
+    const gym = item({ id: 2, amountCents: 100000, frequency: 'weekly', day: 1, nextDue: d(2026, 10, 19, 9) });
+    const old = item({ id: 3, amountCents: 99900, paused: true, remindDays: 0 });
+    const summary = summarizeRecurring([rent, gym, old], wed, 30);
+    assert.equal(summary.active, 2);
+    assert.equal(summary.paused, 1);
+    assert.equal(summary.monthlyCents, 1500000 + Math.round((100000 * 52) / 12));
+    assert.equal(summary.upcomingCents, 1500000 + 4 * 100000); // Rent Nov 1 and four Mondays; paused is ignored
+    assert.equal(summary.next?.item.id, 2);
+    assert.equal(summary.next?.due, d(2026, 10, 19, 9));
+    assert.equal(summary.reminders, 1); // the paused item's reminder does not count
+  });
+
+  it('still finds the next charge when it is further than the window', () => {
+    // Logged Dec 31; the next 31st is Jan 31, 31 days later.
+    const monthEnd = item({ id: 1, day: 31, nextDue: d(2027, 1, 31, 9) });
+    const summary = summarizeRecurring([monthEnd], d(2026, 12, 31, 12), 30);
+    assert.equal(summary.upcomingCents, 0);
+    assert.equal(summary.next?.due, d(2027, 1, 31, 9));
+  });
+
+  it('is empty-safe', () => {
+    assert.deepEqual(summarizeRecurring([], wed, 30), {
+      active: 0,
+      paused: 0,
+      monthlyCents: 0,
+      upcomingCents: 0,
+      next: null,
+      reminders: 0,
+    });
+  });
+});
+
+describe('shortSchedule', () => {
+  it('is the short form for list rows', () => {
+    assert.equal(shortSchedule({ frequency: 'weekly', day: 1 }), 'Every Mon');
+    assert.equal(shortSchedule({ frequency: 'weekly', day: 0 }), 'Every Sun');
+    assert.equal(shortSchedule({ frequency: 'monthly', day: 17 }), 'Monthly · 17th');
+    assert.equal(shortSchedule({ frequency: 'monthly', day: 1 }), 'Monthly · 1st');
+  });
+});
+
+describe('dueSoonCount', () => {
+  const entry = (nextDue: number, paused = false) => ({ nextDue, paused });
+
+  it('counts active items due from today through the last day of the window', () => {
+    const items = [
+      entry(d(2026, 10, 14, 9)), // today
+      entry(d(2026, 10, 17, 9)), // 3 days ahead: in
+      entry(d(2026, 10, 17, 23)), // late on the last day: still in
+      entry(d(2026, 10, 18, 9)), // 4 days ahead: out
+    ];
+    assert.equal(dueSoonCount(items, wed, 3), 3);
+  });
+
+  it('ignores paused items and handles an empty list', () => {
+    assert.equal(dueSoonCount([entry(d(2026, 10, 15, 9), true)], wed, 3), 0);
+    assert.equal(dueSoonCount([], wed, 3), 0);
+  });
+
+  it('is a count of zero when nothing is close, so the badge disappears', () => {
+    assert.equal(dueSoonCount([entry(d(2026, 11, 1, 9))], wed, 3), 0);
   });
 });

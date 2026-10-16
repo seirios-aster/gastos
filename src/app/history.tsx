@@ -9,9 +9,9 @@ import { ExpenseSheet } from '@/components/expense-sheet';
 import { Segmented } from '@/components/segmented';
 import { HeaderActions } from '@/components/header-actions';
 import { SummaryCard } from '@/components/summary-card';
-import { ThemedText } from '@/components/themed-text';
+import { Numeric, ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { BottomTabInset, MaxContentWidth, Radius, Spacing, Touch } from '@/constants/theme';
 import { useExpenses } from '@/context/expenses-context';
 import { useNow } from '@/hooks/use-now';
 import { useTheme } from '@/hooks/use-theme';
@@ -120,7 +120,9 @@ export default function HistoryScreen() {
   const header = (
     <View style={styles.headerContent}>
       <View style={styles.titleRow}>
-        <ThemedText type="subtitle">History</ThemedText>
+        <ThemedText type="subtitle" accessibilityRole="header">
+          History
+        </ThemedText>
         <HeaderActions />
       </View>
 
@@ -138,9 +140,8 @@ export default function HistoryScreen() {
         {searching && (
           <Pressable
             accessibilityRole="button"
-            hitSlop={10}
             onPress={() => setQuery('')}
-            style={styles.clear}>
+            style={({ pressed }) => [styles.clear, pressed && styles.pressed]}>
             <ThemedText type="linkPrimary">Clear</ThemedText>
           </Pressable>
         )}
@@ -157,19 +158,17 @@ export default function HistoryScreen() {
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Previous month"
-              hitSlop={12}
               onPress={() => setMonthTs(addMonths(monthTs, -1))}
-              style={styles.arrowButton}>
+              style={({ pressed }) => [styles.arrowButton, pressed && styles.pressed]}>
               <ThemedText style={styles.arrow}>‹</ThemedText>
             </Pressable>
             <ThemedText type="smallBold">{monthLabel(monthTs)}</ThemedText>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Next month"
-              hitSlop={12}
               disabled={!canGoNext}
               onPress={() => setMonthTs(addMonths(monthTs, 1))}
-              style={styles.arrowButton}>
+              style={({ pressed }) => [styles.arrowButton, pressed && styles.pressed]}>
               <ThemedText style={[styles.arrow, !canGoNext && styles.disabled]}>›</ThemedText>
             </Pressable>
           </ThemedView>
@@ -180,21 +179,23 @@ export default function HistoryScreen() {
             footer={
               `${monthExpenses.length} ${monthExpenses.length === 1 ? 'expense' : 'expenses'}` +
               (projected === null ? '' : ` · On pace for ${formatMoney(projected, currency)}`)
-            }
-          />
+            }>
+            <BudgetProgress
+              spentCents={monthTotal}
+              budgetCents={budgetCents}
+              currency={currency}
+              allowanceNow={isCurrentMonth ? now : undefined}
+            />
+          </SummaryCard>
 
-          <BudgetProgress
-            spentCents={monthTotal}
-            budgetCents={budgetCents}
-            currency={currency}
-            allowanceNow={isCurrentMonth ? now : undefined}
-          />
-
+          {/* Nothing to chart before the very first expense; a month with none still shows it. */}
+          {expenses.length > 0 && (
           <ThemedView type="backgroundElement" style={styles.card}>
             <View style={styles.cardTop}>
               <ThemedText type="smallBold">Spending</ThemedText>
               <View style={styles.toggle}>
                 <Segmented
+                  accessibilityLabel="Chart range"
                   options={[
                     { value: 'days', label: 'Days' },
                     { value: 'months', label: 'Months' },
@@ -204,11 +205,12 @@ export default function HistoryScreen() {
                 />
               </View>
             </View>
-            <BarChart bars={chart.bars} accessibilityLabel={chart.a11y} />
-            <ThemedText type="small" themeColor="textSecondary">
+            <BarChart bars={chart.bars} accessibilityLabel={`${chart.a11y}. ${chart.caption}`} />
+            <ThemedText type="small" themeColor="textSecondary" style={Numeric}>
               {chart.caption}
             </ThemedText>
           </ThemedView>
+          )}
 
           {breakdown.length > 0 && (
             <ThemedView type="backgroundElement" style={styles.card}>
@@ -233,7 +235,7 @@ export default function HistoryScreen() {
                       <ThemedText type="small">
                         {category.emoji} {category.label}
                       </ThemedText>
-                      <ThemedText type="small" themeColor="textSecondary">
+                      <ThemedText type="small" themeColor="textSecondary" style={Numeric}>
                         {formatMoney(totalCents, currency)} · {Math.round(share * 100)}%
                       </ThemedText>
                     </View>
@@ -270,7 +272,7 @@ export default function HistoryScreen() {
           renderSectionHeader={({ section }) => (
             <View style={styles.sectionHeader}>
               <ThemedText type="smallBold">{section.label}</ThemedText>
-              <ThemedText type="small" themeColor="textSecondary">
+              <ThemedText type="small" themeColor="textSecondary" style={Numeric}>
                 {formatMoney(section.totalCents, currency)}
               </ThemedText>
             </View>
@@ -281,7 +283,11 @@ export default function HistoryScreen() {
           ItemSeparatorComponent={() => <View style={styles.separator} />}
           ListEmptyComponent={
             <ThemedText themeColor="textSecondary" style={styles.empty}>
-              {searching ? `No matches for “${query.trim()}”.` : `No expenses in ${monthLabel(monthTs)}.`}
+              {searching
+                ? `No matches for “${query.trim()}”.`
+                : isCurrentMonth
+                  ? `Nothing logged in ${monthLabel(monthTs)} yet.`
+                  : `No expenses in ${monthLabel(monthTs)}.`}
             </ThemedText>
           }
         />
@@ -303,34 +309,34 @@ const styles = StyleSheet.create({
   headerContent: { gap: Spacing.three, paddingBottom: Spacing.two },
   titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   searchRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
-  clear: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
+  clear: { minWidth: Touch.min, minHeight: Touch.min, alignItems: 'center', justifyContent: 'center' },
   search: {
     flex: 1,
-    borderRadius: Spacing.three,
+    borderRadius: Radius.row,
     paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.three - 4,
+    paddingVertical: Spacing.mid,
     fontSize: 16,
   },
   monthRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    borderRadius: Spacing.three,
+    borderRadius: Radius.row,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.one,
   },
-  arrowButton: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
+  arrowButton: { minWidth: Touch.min, minHeight: Touch.min, alignItems: 'center', justifyContent: 'center' },
   arrow: { fontSize: 28, lineHeight: 34 },
   disabled: { opacity: 0.25 },
-  card: { borderRadius: Spacing.four, padding: Spacing.three, gap: Spacing.three - 4 },
+  card: { borderRadius: Radius.card, padding: Spacing.three, gap: Spacing.mid },
   cardTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   toggle: { minWidth: 176 },
   // The negative margin lets the selected highlight reach past the text without moving it.
   breakdownRow: {
-    gap: Spacing.one + 2,
+    gap: Spacing.two,
     marginHorizontal: -Spacing.two,
     padding: Spacing.two,
-    borderRadius: Spacing.three - 4,
+    borderRadius: Radius.control,
   },
   pressed: { opacity: 0.8 },
   breakdownTop: { flexDirection: 'row', justifyContent: 'space-between' },

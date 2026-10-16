@@ -1,8 +1,8 @@
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { ThemedText } from '@/components/themed-text';
+import { Numeric, ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Spacing } from '@/constants/theme';
+import { Radius, Spacing } from '@/constants/theme';
 import { useExpenses } from '@/context/expenses-context';
 import { timeLabel } from '@/lib/dates';
 import { getCategory, type Expense } from '@/lib/expenses';
@@ -22,7 +22,8 @@ export function ExpenseRow({ expense, currency, onPress }: Props) {
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${title}, ${formatMoney(expense.amountCents, currency)}. Tap to edit`}
+      accessibilityLabel={`${title}, ${category.label}, ${formatMoney(expense.amountCents, currency)}, ${timeLabel(expense.createdAt)}`}
+      accessibilityHint="Opens the editor"
       onPress={onPress}
       style={({ pressed }) => pressed && styles.pressed}>
       <ThemedView type="backgroundElement" style={styles.row}>
@@ -35,20 +36,22 @@ export function ExpenseRow({ expense, currency, onPress }: Props) {
             {category.label} · {timeLabel(expense.createdAt)}
           </ThemedText>
         </View>
-        <ThemedText type="smallBold">{formatMoney(expense.amountCents, currency)}</ThemedText>
+        <ThemedText type="defaultBold" style={Numeric}>
+          {formatMoney(expense.amountCents, currency)}
+        </ThemedText>
       </ThemedView>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  pressed: { opacity: 0.7 },
+  pressed: { opacity: 0.8 },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.three - 4,
-    borderRadius: Spacing.three,
-    padding: Spacing.three - 4,
+    gap: Spacing.mid,
+    borderRadius: Radius.row,
+    padding: Spacing.mid,
   },
   icon: {
     minWidth: 40,

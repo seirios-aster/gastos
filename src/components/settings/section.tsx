@@ -12,7 +12,9 @@ type Props = {
 export function Section({ title, hint, children }: Props) {
   return (
     <View style={styles.section}>
-      <ThemedText type="smallBold">{title}</ThemedText>
+      <ThemedText type="defaultBold" accessibilityRole="header">
+        {title}
+      </ThemedText>
       {hint ? (
         <ThemedText type="small" themeColor="textSecondary">
           {hint}

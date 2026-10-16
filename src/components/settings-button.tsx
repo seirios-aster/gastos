@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Pressable, StyleSheet } from 'react-native';
 
 import { SettingsSheet } from '@/components/settings-sheet';
+import { Touch } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 /** The gear that opens Settings, together with the sheet it opens. */
@@ -15,9 +16,8 @@ export function SettingsButton() {
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Settings"
-        hitSlop={12}
         onPress={() => setVisible(true)}
-        style={styles.button}>
+        style={({ pressed }) => [styles.button, pressed && styles.pressed]}>
         <SymbolView
           tintColor={theme.text}
           name={{ ios: 'gearshape', android: 'settings', web: 'settings' }}
@@ -30,5 +30,6 @@ export function SettingsButton() {
 }
 
 const styles = StyleSheet.create({
-  button: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
+  button: { minWidth: Touch.min, minHeight: Touch.min, alignItems: 'center', justifyContent: 'center' },
+  pressed: { opacity: 0.6 },
 });
