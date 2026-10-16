@@ -22,7 +22,7 @@ type Props = {
 };
 
 /**
- * How much of the monthly budget is used: a title, "spent of budget", the bar, and what is left.
+ * How much of the monthly budget is used: a title with the budget, the bar, and what is left.
  * Sits inside a SummaryCard, which gives it its rounded bottom edge. Renders nothing without a budget. A screen reader gets one progress bar.
  */
 export function BudgetProgress({
@@ -83,7 +83,7 @@ export function BudgetProgress({
           Monthly budget
         </ThemedText>
         <ThemedText type="small" themeColor="textSecondary" style={Numeric}>
-          {spentOf} spent
+          {formatMoney(budgetCents, currency)}
         </ThemedText>
       </View>
       {bar}
