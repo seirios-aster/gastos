@@ -2,7 +2,7 @@
 // assets/images were rendered from these at 1024px (icon, adaptive layers), 512px (splash),
 // 96px (notification) and 48px (favicon), by drawing the SVG in a headless browser.
 // Draws the Gastos logo (a playful flying G) as SVG strings, for the renderer.
-const BG = (id) => `<defs><linearGradient id="${id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#B4B5FF"/><stop offset="1" stop-color="#5553DB"/></linearGradient></defs><rect width="1024" height="1024" fill="url(#${id})"/>`;
+const BG = (id) => `<defs><linearGradient id="${id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#82C3FF"/><stop offset="1" stop-color="#2F7CE0"/></linearGradient></defs><rect width="1024" height="1024" fill="url(#${id})"/>`;
 
 // The mark itself on a 1024 canvas, centred; `fill` colours the G and wing, `extra` toggles detail.
 const mark = ({ fill = '#fff', wingOpacity = 0.75, detail = true } = {}) => `
