@@ -23,9 +23,8 @@ export function ThemeIcon({ dark, color, size = 24 }: Props) {
   const progress = useSharedValue(dark ? 1 : 0);
 
   useEffect(() => {
-    // A long, gentle ease: the first moments hardly move, so little is lost while the theme fade
-    // still covers the toggle. Phones that ask for less motion get a jump instead.
-    progress.set(withTiming(dark ? 1 : 0, { duration: 500, easing: Easing.inOut(Easing.cubic) }));
+    // Starts quickly: it only begins once the theme has changed, which is already after the tap.
+    progress.set(withTiming(dark ? 1 : 0, { duration: 350, easing: Easing.out(Easing.cubic) }));
   }, [dark, progress]);
 
   const moonStyle = useAnimatedStyle(() => {

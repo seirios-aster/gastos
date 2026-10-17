@@ -126,8 +126,9 @@ export function ThemeTransitionProvider({ children }: { children: React.ReactNod
               0,
               {
                 duration: FADE_MS,
-                // Slow at the start: if the new theme is a frame late, nobody sees it.
-                easing: Easing.inOut(Easing.quad),
+                // Moves right away. If the new theme is a frame late the picture underneath is still
+                // the old theme, so an early start shows nothing odd; a slow start only felt like lag.
+                easing: Easing.out(Easing.quad),
                 // The decision to animate or not was made in ThemeTransition.request().
                 reduceMotion: ReduceMotion.Never,
               },

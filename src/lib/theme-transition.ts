@@ -36,9 +36,9 @@ export const SWITCH_TIMEOUT_MS = 800;
 /** Frames to wait after the picture is on screen, so it is really drawn before the theme flips. */
 export const FRAMES_BEFORE_SWITCH = 2;
 /** Frames to wait after the new theme reached React, so the new screen is drawn before the fade. */
-export const FRAMES_BEFORE_FADE = 3;
-/** Length of the fade. The fade curve is slow at first, which hides small timing errors. */
-export const FADE_MS = 320;
+export const FRAMES_BEFORE_FADE = 2;
+/** Length of the fade. The fade starts moving at once. */
+export const FADE_MS = 280;
 /** If the fade never reports back, remove the picture this long after it should have finished. */
 export const FADE_GRACE_MS = 600;
 /** A prepared picture is taken down again if no tap follows within this long. */
