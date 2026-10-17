@@ -4,7 +4,18 @@ import { getCategory, type Category } from './expenses';
 import { formatMoney } from './money';
 import { reminderTimes, type Recurring } from './recurring';
 
-type NotificationsModule = typeof import('expo-notifications');
+type Full = typeof import('expo-notifications');
+type NotificationsModule = Pick<
+  Full,
+  | 'setNotificationHandler'
+  | 'setNotificationChannelAsync'
+  | 'AndroidImportance'
+  | 'getPermissionsAsync'
+  | 'requestPermissionsAsync'
+  | 'cancelAllScheduledNotificationsAsync'
+  | 'scheduleNotificationAsync'
+  | 'SchedulableTriggerInputTypes'
+>;
 
 const CHANNEL_ID = 'reminders';
 /** Reminders scheduled ahead per item, and overall; phones cap how many can be pending. */
@@ -19,12 +30,48 @@ function load(): NotificationsModule | null {
     try {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       cached = require('expo-notifications') as NotificationsModule;
-    } catch (error) {
-      console.warn('Notifications are not available', error);
-      cached = null;
+    } catch {
+      cached = loadParts();
     }
   }
   return cached;
+}
+
+/**
+ * The package entry also loads push-topic code that Expo Go lacks, so it throws there. The local
+ * reminders only need these files, which load fine. Null if even they cannot (logged quietly,
+ * since a yellow warning box would only scare people).
+ */
+function loadParts(): NotificationsModule | null {
+  try {
+    /* eslint-disable @typescript-eslint/no-require-imports */
+    const permissions = require('expo-notifications/build/NotificationPermissions');
+    const handler = require('expo-notifications/build/NotificationsHandler');
+    const channel = require('expo-notifications/build/setNotificationChannelAsync');
+    const cancelAll = require('expo-notifications/build/cancelAllScheduledNotificationsAsync');
+    const scheduler = require('expo-notifications/build/scheduleNotificationAsync');
+    const channelTypes = require('expo-notifications/build/NotificationChannelManager.types');
+    const types = require('expo-notifications/build/Notifications.types');
+    /* eslint-enable @typescript-eslint/no-require-imports */
+    return {
+      setNotificationHandler: handler.setNotificationHandler,
+      setNotificationChannelAsync: channel.setNotificationChannelAsync,
+      AndroidImportance: channelTypes.AndroidImportance,
+      getPermissionsAsync: permissions.getPermissionsAsync,
+      requestPermissionsAsync: permissions.requestPermissionsAsync,
+      cancelAllScheduledNotificationsAsync: cancelAll.cancelAllScheduledNotificationsAsync,
+      scheduleNotificationAsync: scheduler.scheduleNotificationAsync,
+      SchedulableTriggerInputTypes: types.SchedulableTriggerInputTypes,
+    };
+  } catch (error) {
+    console.log('Notifications are not available here', error);
+    return null;
+  }
+}
+
+/** False when the notifications code cannot load at all (some Expo Go versions), as opposed to permission being off. */
+export function remindersAvailable(): boolean {
+  return load() !== null;
 }
 
 /** Android only (ignored elsewhere). A failure here must never be mistaken for "notifications off". */
