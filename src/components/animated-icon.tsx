@@ -5,12 +5,12 @@ import { StyleSheet, Text, View } from 'react-native';
 import Animated, { Easing, FadeIn, Keyframe } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
-import { Colors } from '@/constants/theme';
-
 const DURATION = 800;
 
 /** Same size as `imageWidth` in app.json, so the logo does not jump when this takes over from the phone's own splash. */
-const LOGO_SIZE = 160;
+const LOGO_SIZE = 190;
+/** The splash backdrop: sky blue, the same as `backgroundColor` for the splash in app.json. */
+const SPLASH_BACKGROUND = '#4A9BEE';
 
 export function AnimatedSplashOverlay() {
   const [animate, setAnimate] = useState(false);
@@ -29,8 +29,7 @@ export function AnimatedSplashOverlay() {
     },
   });
 
-  // Black in both themes, like the phone's own splash, so the two look like one screen.
-  const background = Colors.dark.background;
+  const background = SPLASH_BACKGROUND;
   const logo = (
     <Image style={styles.logo} source={require('@/assets/images/splash-icon.png')} />
   );
