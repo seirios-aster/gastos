@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { Pressable, StyleSheet } from 'react-native';
 
 import { ThemeIcon } from '@/components/theme-icon';
@@ -14,7 +15,8 @@ import { tick } from '@/lib/haptics';
 export function ThemeToggle() {
   const theme = useTheme();
   const dark = useColorScheme() === 'dark';
-  const { changeTheme } = useThemeTransition();
+  const { changeTheme, prepareChange, cancelPrepare } = useThemeTransition();
+  const releaseTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   return (
     // Already 44dp square, so no hitSlop: it would overlap the Settings button next to it.
@@ -22,6 +24,16 @@ export function ThemeToggle() {
       accessibilityRole="switch"
       accessibilityLabel="Dark mode"
       accessibilityState={{ checked: dark }}
+      // The screen picture is taken as soon as the finger lands, so the fade can begin right after
+      // it lifts. A touch that ends without a tap (the finger slid away) drops that picture again.
+      onPressIn={() => {
+        clearTimeout(releaseTimer.current);
+        prepareChange();
+      }}
+      onPressOut={() => {
+        // A real tap calls onPress just after this, which makes the cancel below do nothing.
+        releaseTimer.current = setTimeout(cancelPrepare, 150);
+      }}
       onPress={() => {
         tick();
         changeTheme(dark ? 'light' : 'dark');

@@ -14,11 +14,12 @@ import { AppState } from 'react-native';
 import {
   deleteAllExpenseRows,
   deleteCategoryRow,
-  deleteExpenseRow,
-  deleteRecurringRow,
+  deleteExpenseRows,
+  deleteRecurringRows,
   importBackupRows,
   insertCategory,
   insertExpense,
+  insertExpenses,
   insertRecurring,
   loadCategories,
   loadExpenses,
@@ -68,8 +69,10 @@ type ExpensesContextValue = {
   addExpense: (input: ExpenseInput) => Promise<void>;
   updateExpense: (id: number, input: ExpenseInput) => Promise<void>;
   deleteExpense: (id: number) => Promise<void>;
-  /** The expense deleted most recently, kept for a few seconds so it can be undone. */
-  lastDeleted: Expense | null;
+  /** Delete several at once. One undo brings all of them back. */
+  deleteExpenses: (ids: number[]) => Promise<void>;
+  /** The expense(s) deleted most recently, kept for a few seconds so they can be undone. */
+  lastDeleted: Expense[] | null;
   undoDelete: () => Promise<void>;
   dismissUndo: () => void;
   clearAll: () => Promise<void>;
@@ -80,6 +83,8 @@ type ExpensesContextValue = {
   /** Pause or resume a recurring item. Resuming never back-logs the paused days. */
   setRecurringPaused: (id: number, paused: boolean) => Promise<void>;
   deleteRecurring: (id: number) => Promise<void>;
+  /** Stop several recurring items at once. */
+  deleteRecurrings: (ids: number[]) => Promise<void>;
   /** All data as a JSON backup that `importBackup` accepts. */
   exportBackup: () => string;
   importBackup: (text: string) => Promise<ImportResult>;
@@ -103,7 +108,7 @@ export function ExpensesProvider({ children }: { children: React.ReactNode }) {
   const [lastCategory, setLastCategoryState] = useState(
     () => Storage.getItemSync(LAST_CATEGORY_KEY) ?? ''
   );
-  const [lastDeleted, setLastDeleted] = useState<Expense | null>(null);
+  const [lastDeleted, setLastDeleted] = useState<Expense[] | null>(null);
   const undoTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const syncing = useRef(false);
   const syncAgain = useRef(false);
@@ -226,12 +231,13 @@ export function ExpensesProvider({ children }: { children: React.ReactNode }) {
     setLastDeleted(null);
   }, []);
 
-  const deleteExpense = useCallback(
-    async (id: number) => {
-      const deleted = expenses.find((e) => e.id === id);
-      await deleteExpenseRow(db, id);
-      setExpenses((prev) => prev.filter((e) => e.id !== id));
-      if (!deleted) return;
+  const deleteExpenses = useCallback(
+    async (ids: number[]) => {
+      const wanted = new Set(ids);
+      const deleted = expenses.filter((e) => wanted.has(e.id));
+      if (deleted.length === 0) return;
+      await deleteExpenseRows(db, deleted.map((e) => e.id));
+      setExpenses((prev) => prev.filter((e) => !wanted.has(e.id)));
       clearTimeout(undoTimer.current);
       setLastDeleted(deleted);
       undoTimer.current = setTimeout(() => setLastDeleted(null), UNDO_MS);
@@ -239,15 +245,19 @@ export function ExpensesProvider({ children }: { children: React.ReactNode }) {
     [db, expenses]
   );
 
+  const deleteExpense = useCallback((id: number) => deleteExpenses([id]), [deleteExpenses]);
+
   const undoDelete = useCallback(async () => {
     if (!lastDeleted || undoing.current) return;
     undoing.current = true;
     try {
-      // Same title, amount, category and date; only the id is new. Hide the toast only after the
+      // Same title, amount, category and date; only the ids are new. Hide the toast only after the
       // re-insert worked, so a failure leaves the offer (and the error) visible.
-      const id = await insertExpense(db, lastDeleted);
+      const ids = await insertExpenses(db, lastDeleted);
       dismissUndo();
-      setExpenses((prev) => sortExpenses([...prev, { ...lastDeleted, id }]));
+      setExpenses((prev) =>
+        sortExpenses([...prev, ...lastDeleted.map((e, i) => ({ ...e, id: ids[i] }))])
+      );
     } finally {
       undoing.current = false;
     }
@@ -313,13 +323,17 @@ export function ExpensesProvider({ children }: { children: React.ReactNode }) {
     [db, syncRecurring]
   );
 
-  const deleteRecurring = useCallback(
-    async (id: number) => {
-      await deleteRecurringRow(db, id);
-      setRecurring((prev) => prev.filter((r) => r.id !== id));
+  const deleteRecurrings = useCallback(
+    async (ids: number[]) => {
+      if (ids.length === 0) return;
+      await deleteRecurringRows(db, ids);
+      const gone = new Set(ids);
+      setRecurring((prev) => prev.filter((r) => !gone.has(r.id)));
     },
     [db]
   );
+
+  const deleteRecurring = useCallback((id: number) => deleteRecurrings([id]), [deleteRecurrings]);
 
   const exportBackup = useCallback(
     () => toBackupJson({ expenses, categories, recurring }, Date.now()),
@@ -372,6 +386,7 @@ export function ExpensesProvider({ children }: { children: React.ReactNode }) {
       addExpense,
       updateExpense,
       deleteExpense,
+      deleteExpenses,
       lastDeleted,
       undoDelete,
       dismissUndo,
@@ -382,6 +397,7 @@ export function ExpensesProvider({ children }: { children: React.ReactNode }) {
       updateRecurring,
       setRecurringPaused,
       deleteRecurring,
+      deleteRecurrings,
       exportBackup,
       importBackup,
     }),
@@ -399,6 +415,7 @@ export function ExpensesProvider({ children }: { children: React.ReactNode }) {
       addExpense,
       updateExpense,
       deleteExpense,
+      deleteExpenses,
       lastDeleted,
       undoDelete,
       dismissUndo,
@@ -409,6 +426,7 @@ export function ExpensesProvider({ children }: { children: React.ReactNode }) {
       updateRecurring,
       setRecurringPaused,
       deleteRecurring,
+      deleteRecurrings,
       exportBackup,
       importBackup,
     ]

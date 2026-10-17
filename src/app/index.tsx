@@ -17,14 +17,16 @@ import { CategoryChips } from '@/components/category-chips';
 import { ExpenseRow } from '@/components/expense-row';
 import { ExpenseSheet } from '@/components/expense-sheet';
 import { FieldError } from '@/components/field-error';
-import { info } from '@/components/notices';
+import { confirmDeleteExpenses, info } from '@/components/notices';
 import { HeaderActions } from '@/components/header-actions';
+import { SelectionBar } from '@/components/selection-bar';
 import { SummaryCard } from '@/components/summary-card';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import { useExpenses } from '@/context/expenses-context';
 import { useNow } from '@/hooks/use-now';
+import { useSelection } from '@/hooks/use-selection';
 import { useSheetNotice } from '@/hooks/use-sheet-notice';
 import { useTheme } from '@/hooks/use-theme';
 import { addDays, longDateLabel } from '@/lib/dates';
@@ -41,8 +43,16 @@ import { formatMoney, parseAmountToCents } from '@/lib/money';
 export default function TodayScreen() {
   const theme = useTheme();
   const now = useNow();
-  const { expenses, categories, currency, budgetCents, lastCategory, addExpense, setLastCategory } =
-    useExpenses();
+  const {
+    expenses,
+    categories,
+    currency,
+    budgetCents,
+    lastCategory,
+    addExpense,
+    setLastCategory,
+    deleteExpenses,
+  } = useExpenses();
 
   const [amount, setAmount] = useState('');
   const [title, setTitle] = useState('');
@@ -58,9 +68,26 @@ export default function TodayScreen() {
     : (categories[0]?.id ?? 'other');
 
   const today = expensesOnDay(expenses, now);
+  const selection = useSelection(today.map((e) => e.id));
   const monthSpent = sumCents(expensesInMonth(expenses, now));
   const todayTotal = sumCents(today);
   const yesterdayTotal = sumCents(expensesOnDay(expenses, addDays(now, -1)));
+
+  /** Ask, then delete everything picked; the Undo toast can bring it all back. */
+  function deleteSelected() {
+    const ids = selection.ids;
+    notify(
+      confirmDeleteExpenses(ids.length, async () => {
+        try {
+          await deleteExpenses(ids);
+          selection.clear();
+        } catch (error) {
+          console.warn('Could not delete the expenses', error);
+          notify(info('Could not delete', 'Please try again.'));
+        }
+      })
+    );
+  }
 
   async function submit() {
     // Return on the keyboard and the button can both fire while the first save is still running.
@@ -171,7 +198,13 @@ export default function TodayScreen() {
                     key={expense.id}
                     expense={expense}
                     currency={currency}
-                    onPress={() => setEditing(expense)}
+                    onPress={() => (selection.selecting ? selection.toggle(expense.id) : setEditing(expense))}
+                    onLongPress={() => {
+                      if (!selection.selecting) tap();
+                      selection.toggle(expense.id);
+                    }}
+                    selecting={selection.selecting}
+                    selected={selection.has(expense.id)}
                   />
                 ))
               )}
@@ -179,6 +212,16 @@ export default function TodayScreen() {
           </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
+
+      {selection.selecting && (
+        <SelectionBar
+          count={selection.count}
+          total={today.length}
+          onSelectAll={selection.selectAll}
+          onDelete={deleteSelected}
+          onCancel={selection.clear}
+        />
+      )}
 
       <ExpenseSheet expense={editing} onClose={() => setEditing(null)} />
       <ActionSheet {...sheetProps} />

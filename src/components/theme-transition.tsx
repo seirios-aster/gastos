@@ -75,9 +75,20 @@ function after(ms: number, fn: () => void): () => void {
 type ThemeTransitionValue = {
   /** Switch to this theme with a fade. Falls back to an instant switch whenever the fade is not possible. */
   changeTheme: (next: ThemeChoice) => void;
+  /**
+   * Call when the finger touches the toggle, before the tap is complete: the screen picture is taken
+   * then, so the fade can start the moment the finger lifts.
+   */
+  prepareChange: () => void;
+  /** Call when the touch ended without a tap (the finger slid away): drops the early picture. */
+  cancelPrepare: () => void;
 };
 
-const ThemeTransitionContext = createContext<ThemeTransitionValue>({ changeTheme: setTheme });
+const ThemeTransitionContext = createContext<ThemeTransitionValue>({
+  changeTheme: setTheme,
+  prepareChange: () => {},
+  cancelPrepare: () => {},
+});
 
 export function useThemeTransition() {
   return useContext(ThemeTransitionContext);
@@ -138,6 +149,10 @@ export function ThemeTransitionProvider({ children }: { children: React.ReactNod
     () => ({
       // The browser preview cannot take screen pictures (and has no way to switch theme by hand either).
       changeTheme: (next) => (Platform.OS === 'web' ? setTheme(next) : transition.request(next)),
+      prepareChange: () => {
+        if (Platform.OS !== 'web') transition.prepare();
+      },
+      cancelPrepare: () => transition.cancelPrepare(),
     }),
     [transition]
   );

@@ -4,17 +4,23 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BarChart, type Bar } from '@/components/bar-chart';
 import { BudgetProgress } from '@/components/budget-progress';
+import { ActionSheet } from '@/components/action-sheet';
 import { ExpenseRow } from '@/components/expense-row';
 import { ExpenseSheet } from '@/components/expense-sheet';
 import { Segmented } from '@/components/segmented';
 import { HeaderActions } from '@/components/header-actions';
+import { confirmDeleteExpenses, info } from '@/components/notices';
+import { SelectionBar } from '@/components/selection-bar';
 import { SummaryCard } from '@/components/summary-card';
 import { Numeric, ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Radius, Spacing, Touch } from '@/constants/theme';
 import { useExpenses } from '@/context/expenses-context';
 import { useNow } from '@/hooks/use-now';
+import { useSelection } from '@/hooks/use-selection';
+import { useSheetNotice } from '@/hooks/use-sheet-notice';
 import { useTheme } from '@/hooks/use-theme';
+import { tap } from '@/lib/haptics';
 import { projectedMonthCents } from '@/lib/budget';
 import {
   addMonths,
@@ -44,7 +50,8 @@ const DAY_LABELS = new Set([1, 8, 15, 22, 29]);
 export default function HistoryScreen() {
   const theme = useTheme();
   const now = useNow();
-  const { expenses, categories, currency, budgetCents } = useExpenses();
+  const { expenses, categories, currency, budgetCents, deleteExpenses } = useExpenses();
+  const { notify, sheetProps } = useSheetNotice();
 
   const [monthTs, setMonthTs] = useState(() => startOfMonth(Date.now()));
   const [query, setQuery] = useState('');
@@ -72,6 +79,8 @@ export default function HistoryScreen() {
       : monthExpenses;
   }, [searching, expenses, categories, query, monthExpenses, activeFilter]);
   const sections = useMemo(() => groupByDay(shown, now), [shown, now]);
+  const shownIds = useMemo(() => shown.map((e) => e.id), [shown]);
+  const selection = useSelection(shownIds);
   const monthTotal = sumCents(monthExpenses);
 
   const chart = useMemo(() => {
@@ -257,6 +266,22 @@ export default function HistoryScreen() {
     </View>
   );
 
+  /** Ask, then delete everything picked; the Undo toast can bring it all back. */
+  function deleteSelected() {
+    const ids = selection.ids;
+    notify(
+      confirmDeleteExpenses(ids.length, async () => {
+        try {
+          await deleteExpenses(ids);
+          selection.clear();
+        } catch (error) {
+          console.warn('Could not delete the expenses', error);
+          notify(info('Could not delete', 'Please try again.'));
+        }
+      })
+    );
+  }
+
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -277,8 +302,20 @@ export default function HistoryScreen() {
               </ThemedText>
             </View>
           )}
+          // Rows are redrawn when what is picked changes.
+          extraData={selection.ids}
           renderItem={({ item }) => (
-            <ExpenseRow expense={item} currency={currency} onPress={() => setEditing(item)} />
+            <ExpenseRow
+              expense={item}
+              currency={currency}
+              onPress={() => (selection.selecting ? selection.toggle(item.id) : setEditing(item))}
+              onLongPress={() => {
+                if (!selection.selecting) tap();
+                selection.toggle(item.id);
+              }}
+              selecting={selection.selecting}
+              selected={selection.has(item.id)}
+            />
           )}
           ItemSeparatorComponent={() => <View style={styles.separator} />}
           ListEmptyComponent={
@@ -293,7 +330,18 @@ export default function HistoryScreen() {
         />
       </SafeAreaView>
 
+      {selection.selecting && (
+        <SelectionBar
+          count={selection.count}
+          total={shownIds.length}
+          onSelectAll={selection.selectAll}
+          onDelete={deleteSelected}
+          onCancel={selection.clear}
+        />
+      )}
+
       <ExpenseSheet expense={editing} onClose={() => setEditing(null)} />
+      <ActionSheet {...sheetProps} />
     </ThemedView>
   );
 }

@@ -150,6 +150,32 @@ export async function deleteExpenseRow(db: SQLiteDatabase, id: number) {
   await db.runAsync('DELETE FROM expenses WHERE id = ?', id);
 }
 
+/** SQLite allows only so many "?" in one statement, so long lists are deleted in chunks. */
+const DELETE_CHUNK = 400;
+
+async function deleteByIds(db: SQLiteDatabase, table: 'expenses' | 'recurring', ids: number[]) {
+  await db.withTransactionAsync(async () => {
+    for (let i = 0; i < ids.length; i += DELETE_CHUNK) {
+      const chunk = ids.slice(i, i + DELETE_CHUNK);
+      await db.runAsync(`DELETE FROM ${table} WHERE id IN (${chunk.map(() => '?').join(',')})`, chunk);
+    }
+  });
+}
+
+/** Delete several expenses in one go: all of them, or none if something fails. */
+export async function deleteExpenseRows(db: SQLiteDatabase, ids: number[]) {
+  await deleteByIds(db, 'expenses', ids);
+}
+
+/** Put deleted expenses back (with new ids) in one go. Returns the new ids, in the same order. */
+export async function insertExpenses(db: SQLiteDatabase, inputs: ExpenseInput[]): Promise<number[]> {
+  const ids: number[] = [];
+  await db.withTransactionAsync(async () => {
+    for (const input of inputs) ids.push(await insertExpense(db, input));
+  });
+  return ids;
+}
+
 export async function deleteAllExpenseRows(db: SQLiteDatabase) {
   await db.runAsync('DELETE FROM expenses');
 }
@@ -290,6 +316,11 @@ export async function setRecurringPausedRow(
 
 export async function deleteRecurringRow(db: SQLiteDatabase, id: number) {
   await db.runAsync('DELETE FROM recurring WHERE id = ?', id);
+}
+
+/** Stop several recurring items in one go: all of them, or none if something fails. */
+export async function deleteRecurringRows(db: SQLiteDatabase, ids: number[]) {
+  await deleteByIds(db, 'recurring', ids);
 }
 
 /**

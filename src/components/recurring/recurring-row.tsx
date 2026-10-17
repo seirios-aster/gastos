@@ -1,9 +1,11 @@
 import { Pressable, StyleSheet, View } from 'react-native';
 
+import { SelectMark } from '@/components/select-mark';
 import { ThemedText, Numeric } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Radius, Spacing } from '@/constants/theme';
 import { useExpenses } from '@/context/expenses-context';
+import { useTheme } from '@/hooks/use-theme';
 import { daysBetween, dueLabel } from '@/lib/dates';
 import { getCategory } from '@/lib/expenses';
 import { formatMoney } from '@/lib/money';
@@ -13,14 +15,21 @@ type Props = {
   item: Recurring;
   /** The current time, so "Tomorrow" stays right after midnight. */
   now: number;
+  /** Opens the editor, or picks the row while others are being picked. */
   onPress: () => void;
+  /** Holding a row starts picking several. */
+  onLongPress?: () => void;
+  /** True while picking several: rows show a tick circle and tapping picks them. */
+  selecting?: boolean;
+  selected?: boolean;
 };
 
 /**
  * One recurring item. A paused item is muted with the secondary text color and a "Paused" tag, not
  * with opacity: fading the whole row dropped its small text to about 2.5:1 contrast.
  */
-export function RecurringRow({ item, now, onPress }: Props) {
+export function RecurringRow({ item, now, onPress, onLongPress, selecting = false, selected = false }: Props) {
+  const theme = useTheme();
   const { categories, currency } = useExpenses();
   const category = getCategory(categories, item.category);
   const label = item.title || category.label;
@@ -31,7 +40,8 @@ export function RecurringRow({ item, now, onPress }: Props) {
 
   return (
     <Pressable
-      accessibilityRole="button"
+      accessibilityRole={selecting ? 'checkbox' : 'button'}
+      accessibilityState={selecting ? { checked: selected } : undefined}
       accessibilityLabel={[
         label,
         money,
@@ -41,13 +51,22 @@ export function RecurringRow({ item, now, onPress }: Props) {
       ]
         .filter(Boolean)
         .join(', ')}
-      accessibilityHint="Opens the editor"
+      accessibilityHint={selecting ? 'Tap to pick or unpick' : 'Opens the editor. Hold to pick several.'}
       onPress={onPress}
+      onLongPress={onLongPress}
       style={({ pressed }) => pressed && styles.pressed}>
-      <ThemedView type="backgroundElement" style={styles.row}>
-        <ThemedView type="backgroundSelected" style={styles.icon}>
-          <ThemedText style={styles.emoji}>{category.emoji}</ThemedText>
-        </ThemedView>
+      <ThemedView
+        type="backgroundElement"
+        style={[styles.row, selected && { backgroundColor: theme.accentSoft }]}>
+        {selecting ? (
+          <View style={styles.icon}>
+            <SelectMark selected={selected} />
+          </View>
+        ) : (
+          <ThemedView type="backgroundSelected" style={styles.icon}>
+            <ThemedText style={styles.emoji}>{category.emoji}</ThemedText>
+          </ThemedView>
+        )}
         <View style={styles.text}>
           <ThemedText numberOfLines={1} themeColor={muted}>
             {label}

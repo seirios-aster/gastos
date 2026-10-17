@@ -1,8 +1,19 @@
 import type { SheetNotice } from '@/components/action-sheet';
-import { openNotificationSettings, permissionDetail } from '@/lib/reminders';
+import { openNotificationSettings, permissionDetail, remindersAvailable } from '@/lib/reminders';
 
 /** Built when needed, so it can include what the phone just reported (useful if turning it on does not help). */
-export const notificationsOff = (): SheetNotice => ({
+export const notificationsOff = (): SheetNotice =>
+  remindersAvailable() ? permissionOff() : unavailable();
+
+/** The phone's notifications code could not load (some Expo Go versions); settings would not help. */
+const unavailable = (): SheetNotice => ({
+  title: 'Reminders unavailable',
+  message:
+    "Reminders can't run in this version of the app. They work in the installed Gastos app from Google Play.",
+  cancelLabel: 'OK',
+});
+
+const permissionOff = (): SheetNotice => ({
   title: 'Notifications are off',
   message:
     "Allow notifications for Gastos in your phone's settings to get reminders. Tap Open Settings, then Notifications." +

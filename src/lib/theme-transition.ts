@@ -13,6 +13,11 @@ import type { ThemeChoice } from './theme-preference';
  * (src/lib/__tests__/theme-transition.test.ts). src/components/theme-transition.tsx plugs in the
  * real camera, timers and animation.
  *
+ * To feel instant, steps 1 and 2 can start early: `prepare()` is called when the finger touches
+ * the button, so by the time it lifts the picture is already on screen and `request()` goes straight
+ * to step 3. A prepared transition that is never requested (the finger slid away) is quietly taken
+ * down again and never changes the theme.
+ *
  * The one rule that matters most: whatever goes wrong, the picture must come off and the theme must
  * still change. Every step below has a timeout that falls back to an instant switch.
  */
@@ -36,6 +41,8 @@ export const FRAMES_BEFORE_FADE = 3;
 export const FADE_MS = 320;
 /** If the fade never reports back, remove the picture this long after it should have finished. */
 export const FADE_GRACE_MS = 600;
+/** A prepared picture is taken down again if no tap follows within this long. */
+export const ARM_TTL_MS = 800;
 /** Last line of defence: no matter what, a transition is over this long after the tap. */
 export const HARD_TIMEOUT_MS = 4000;
 
@@ -62,7 +69,7 @@ export type TransitionEnv = {
   startFade: (done: () => void) => void;
 };
 
-type Phase = 'idle' | 'capturing' | 'covering' | 'switching' | 'fading';
+type Phase = 'idle' | 'capturing' | 'covering' | 'armed' | 'switching' | 'fading';
 
 export class ThemeTransition {
   private readonly env: TransitionEnv;
@@ -74,6 +81,11 @@ export class ThemeTransition {
   private uri: string | null = null;
   private hardCancel: (() => void) | null = null;
   private phaseCancels: (() => void)[] = [];
+  /** A transition was started early by prepare(), before the tap itself. */
+  private preparing = false;
+  /** The tap has arrived for a prepared transition. */
+  private wantsSwitch = false;
+  private armCancel: (() => void) | null = null;
 
   constructor(env: TransitionEnv) {
     this.env = env;
@@ -84,8 +96,35 @@ export class ThemeTransition {
     return this.phase !== 'idle';
   }
 
+  /**
+   * Get ready for a tap that is about to land: take the picture and put it on screen now, so
+   * request() can switch at once. Safe to call and then never follow up.
+   */
+  prepare(): void {
+    if (this.phase !== 'idle') return;
+    if (!THEME_FADE_ENABLED || this.env.reduceMotion()) return;
+
+    const run = ++this.run;
+    this.preparing = true;
+    this.wantsSwitch = false;
+    this.applied = false;
+    this.uri = null;
+    this.hardCancel = this.env.after(HARD_TIMEOUT_MS, () => this.bail(run));
+    this.armCancel = this.env.after(ARM_TTL_MS, () => this.cancelPrepare());
+    this.startCapture(run);
+  }
+
+  /** The finger slid away without tapping: take a prepared picture down and leave the theme alone. */
+  cancelPrepare(): void {
+    if (this.preparing && !this.wantsSwitch) this.reset(false);
+  }
+
   /** Switch to `next`, with the cross-fade when possible and instantly when not. */
   request(next: ThemeChoice): void {
+    if (this.preparing && !this.wantsSwitch) {
+      this.requestPrepared(next);
+      return;
+    }
     if (this.phase !== 'idle') return;
     if (!THEME_FADE_ENABLED || this.env.current() === next || this.env.reduceMotion()) {
       this.env.apply(next);
@@ -97,8 +136,30 @@ export class ThemeTransition {
     this.applied = false;
     this.uri = null;
     this.hardCancel = this.env.after(HARD_TIMEOUT_MS, () => this.bail(run));
-    this.enter('capturing', CAPTURE_TIMEOUT_MS, run);
+    this.startCapture(run);
+  }
 
+  /** The tap arrived for a transition that prepare() already started. */
+  private requestPrepared(next: ThemeChoice): void {
+    if (this.env.current() === next || this.env.reduceMotion()) {
+      this.reset(false);
+      this.env.apply(next);
+      return;
+    }
+    this.next = next;
+    this.wantsSwitch = true;
+    this.armCancel?.();
+    this.armCancel = null;
+    // Picture already on screen: switch right now. Otherwise carry on as usual once it is.
+    if (this.phase === 'armed') {
+      const run = this.run;
+      this.enter('switching', undefined, run);
+      this.switchTheme(run);
+    }
+  }
+
+  private startCapture(run: number): void {
+    this.enter('capturing', CAPTURE_TIMEOUT_MS, run);
     let pending: Promise<string>;
     try {
       pending = this.env.capture();
@@ -115,6 +176,11 @@ export class ThemeTransition {
   coverShown(): void {
     if (this.phase !== 'covering') return;
     const run = this.run;
+    // Prepared but not tapped yet: wait with the picture on screen for the tap.
+    if (this.preparing && !this.wantsSwitch) {
+      this.enter('armed', undefined, run);
+      return;
+    }
     this.enter('switching', undefined, run);
     this.phaseCancels.push(this.env.afterFrames(FRAMES_BEFORE_SWITCH, () => this.switchTheme(run)));
   }
@@ -178,7 +244,8 @@ export class ThemeTransition {
   /** Something went wrong or took too long: make sure the theme changes, then drop the cover. */
   private bail(run: number): void {
     if (run !== this.run || this.phase === 'idle') return;
-    this.reset(true);
+    // A prepared picture that nobody tapped for must not change the theme just because it timed out.
+    this.reset(!(this.preparing && !this.wantsSwitch));
   }
 
   private enter(phase: Phase, timeoutMs: number | undefined, run: number): void {
@@ -205,6 +272,10 @@ export class ThemeTransition {
     this.phase = 'idle';
     this.uri = null;
     this.applied = false;
+    this.preparing = false;
+    this.wantsSwitch = false;
+    this.armCancel?.();
+    this.armCancel = null;
     this.cancelPhaseTimers();
     this.hardCancel?.();
     this.hardCancel = null;

@@ -8,10 +8,13 @@ import {
   deleteAllExpenseRows,
   deleteCategoryRow,
   deleteExpenseRow,
+  deleteExpenseRows,
   deleteRecurringRow,
+  deleteRecurringRows,
   importBackupRows,
   insertCategory,
   insertExpense,
+  insertExpenses,
   insertRecurring,
   loadCategories,
   loadExpenses,
@@ -128,6 +131,46 @@ describe('expenses', () => {
     await deleteExpenseRow(db, b);
     assert.equal((await loadExpenses(db)).length, 1);
   });
+
+  it('deletes several at once and leaves the rest', async () => {
+    const { db } = await freshDb();
+    const t = d(2026, 10, 15);
+    const ids: number[] = [];
+    for (let i = 0; i < 5; i++) {
+      ids.push(await insertExpense(db, { title: `E${i}`, amountCents: 100 + i, category: 'food', createdAt: t + i }));
+    }
+    await deleteExpenseRows(db, [ids[1], ids[3], 99999]); // an id that is already gone is fine
+    assert.deepEqual((await loadExpenses(db)).map((r) => r.title).sort(), ['E0', 'E2', 'E4']);
+    await deleteExpenseRows(db, []); // nothing picked: nothing happens
+    assert.equal((await loadExpenses(db)).length, 3);
+  });
+
+  it('deletes more rows than one SQL statement can name', async () => {
+    const { db } = await freshDb();
+    const ids = await insertExpenses(
+      db,
+      Array.from({ length: 1000 }, (_, i) => ({ title: `E${i}`, amountCents: 100, category: 'food', createdAt: 1000 + i }))
+    );
+    await deleteExpenseRows(db, ids.slice(0, 950));
+    assert.equal((await loadExpenses(db)).length, 50);
+  });
+
+  it('puts deleted expenses back with the same details and new ids', async () => {
+    const { db } = await freshDb();
+    const input = [
+      { title: 'Rent', amountCents: 1500000, category: 'bills', createdAt: 5000 },
+      { title: '', amountCents: 250, category: 'food', createdAt: 6000 },
+    ];
+    const ids = await insertExpenses(db, input);
+    assert.equal(ids.length, 2);
+    assert.notEqual(ids[0], ids[1]);
+    await deleteExpenseRows(db, ids);
+    assert.equal((await loadExpenses(db)).length, 0);
+    const back = await insertExpenses(db, input);
+    const rows = await loadExpenses(db);
+    assert.deepEqual(rows.map(({ id: _id, ...rest }) => rest).sort((a, b) => a.createdAt - b.createdAt), input);
+    assert.deepEqual(rows.map((r) => r.id).sort(), [...back].sort());
+  });
 });
 
 describe('categories', () => {
@@ -226,6 +269,22 @@ const backupOf = (parts: Partial<Backup>): Backup => ({
   expenses: [],
   recurring: [],
   ...parts,
+});
+
+describe('deleting several recurring items', () => {
+  const base = { amountCents: 1000, category: 'bills', frequency: 'monthly' as const, day: 5, remindDays: null };
+
+  it('removes the chosen items and keeps the others', async () => {
+    const { db } = await freshDb();
+    const now = d(2026, 10, 16);
+    for (const title of ['A', 'B', 'C']) await insertRecurring(db, { ...base, title }, now);
+    const all = await loadRecurring(db);
+    const byTitle = (t: string) => all.find((r) => r.title === t)!.id;
+    await deleteRecurringRows(db, [byTitle('A'), byTitle('C')]);
+    assert.deepEqual((await loadRecurring(db)).map((r) => r.title), ['B']);
+    await deleteRecurringRows(db, []);
+    assert.equal((await loadRecurring(db)).length, 1);
+  });
 });
 
 describe('importBackupRows', () => {
