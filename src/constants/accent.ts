@@ -1,7 +1,7 @@
 import { Neutrals } from './neutrals';
 
-/** The main color people start with. Lavender; the app derives a readable shade for each theme from it. */
-export const DEFAULT_ACCENT = '#B196FF';
+/** The main color people start with. Deep indigo; the app derives a readable shade for each theme from it. */
+export const DEFAULT_ACCENT = '#9A9BFF';
 
 /** Everything in the theme that follows the accent. */
 export type AccentSet = {
@@ -102,7 +102,7 @@ function search(h: number, s: number, start: number, step: number, ok: (hex: str
 export function deriveAccent(base: string): AccentColors {
   const [h, s, l] = hexToHsl(isHex(base) ? base : DEFAULT_ACCENT);
   // A fully vivid colour turned darker looks harsh, so the darker shades ease off a little.
-  const sDeep = Math.min(s, 0.8);
+  const sDeep = Math.min(s, 0.65);
   const light = Neutrals.light;
   const dark = Neutrals.dark;
 

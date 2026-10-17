@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import * as SplashScreen from 'expo-splash-screen';
 import { useState } from 'react';
-import { Dimensions, StyleSheet, Text, View, useColorScheme } from 'react-native';
+import { Dimensions, StyleSheet, Text, View } from 'react-native';
 import Animated, { Easing, FadeIn, Keyframe } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
@@ -11,12 +11,9 @@ const INITIAL_SCALE_FACTOR = Dimensions.get('screen').height / 90;
 const DURATION = 800;
 
 /** Same size as `imageWidth` in app.json, so the logo does not jump when this takes over from the phone's own splash. */
-const LOGO_SIZE = 150;
-const BRAND_BLUE = '#208AEF';
+const LOGO_SIZE = 160;
 
 export function AnimatedSplashOverlay() {
-  const scheme = useColorScheme();
-  const dark = scheme === 'dark';
   const [animate, setAnimate] = useState(false);
   const [visible, setVisible] = useState(true);
 
@@ -33,7 +30,8 @@ export function AnimatedSplashOverlay() {
     },
   });
 
-  const background = dark ? Colors.dark.background : BRAND_BLUE;
+  // Black in both themes, like the phone's own splash, so the two look like one screen.
+  const background = Colors.dark.background;
   const logo = (
     <Image style={styles.logo} source={require('@/assets/images/splash-icon.png')} />
   );
