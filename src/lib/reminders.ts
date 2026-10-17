@@ -164,6 +164,14 @@ function whenText(days: number): string {
   return `is due in ${days} days`;
 }
 
+function reminderContent(item: Recurring, categories: Category[], currency: string) {
+  const label = item.title || getCategory(categories, item.category).label;
+  return {
+    title: `${label} ${whenText(item.remindDays ?? 0)}`,
+    body: `${formatMoney(item.amountCents, currency)} · Gastos logs it for you when you open the app.`,
+  };
+}
+
 async function schedule(
   items: Recurring[],
   categories: Category[],
@@ -185,12 +193,8 @@ async function schedule(
     .slice(0, MAX_TOTAL);
 
   for (const { item, at } of upcoming) {
-    const label = item.title || getCategory(categories, item.category).label;
     await notifications.scheduleNotificationAsync({
-      content: {
-        title: `${label} ${whenText(item.remindDays ?? 0)}`,
-        body: `${formatMoney(item.amountCents, currency)} · Gastos logs it for you when you open the app.`,
-      },
+      content: reminderContent(item, categories, currency),
       trigger: {
         type: notifications.SchedulableTriggerInputTypes.DATE,
         date: new Date(at),
@@ -216,13 +220,19 @@ export function syncReminders(
 }
 
 /** Show a notification in a few seconds so the person can see reminders work. */
-export async function sendTestReminder(): Promise<boolean> {
+export async function sendTestReminder(
+  item: Recurring | undefined,
+  categories: Category[],
+  currency: string
+): Promise<boolean> {
   const notifications = load();
   if (!notifications) return false;
   if (!(await ensureReminderPermission())) return false;
   try {
     await notifications.scheduleNotificationAsync({
-      content: { title: 'Gastos reminders are on 🎉', body: 'This is how a recurring reminder will look.' },
+      content: item
+        ? reminderContent(item, categories, currency)
+        : { title: 'Gastos reminders are on 🎉', body: 'This is how a recurring reminder will look.' },
       trigger: {
         type: notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
         seconds: 5,

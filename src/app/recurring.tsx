@@ -27,7 +27,7 @@ import { sendTestReminder } from '@/lib/reminders';
 
 export default function RecurringScreen() {
   const now = useNow();
-  const { recurring, currency, deleteRecurrings } = useExpenses();
+  const { recurring, categories, currency, deleteRecurrings } = useExpenses();
   // Messages here use the app's own sheet (the system pop-up ignores dark mode). The form has its
   // own inside its sheet: a second modal can't open over one that is already open.
   const { notify, sheetProps } = useSheetNotice();
@@ -66,7 +66,8 @@ export default function RecurringScreen() {
   });
 
   async function sendTest() {
-    notify((await sendTestReminder()) ? TEST_SENT : notificationsOff());
+    const sample = active.find((item) => item.remindDays !== null);
+    notify((await sendTestReminder(sample, categories, currency)) ? TEST_SENT : notificationsOff());
   }
 
   return (
@@ -124,7 +125,8 @@ export default function RecurringScreen() {
                 </View>
               )}
 
-              {active.some((item) => item.remindDays !== null) && (
+              {/* A development aid: Expo Go's notifications are shaky, so the released app leaves it out. */}
+              {__DEV__ && active.some((item) => item.remindDays !== null) && (
                 <Pressable
                   accessibilityRole="button"
                   onPress={() => void sendTest()}
