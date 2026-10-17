@@ -23,9 +23,9 @@ export function SettingsSheet({ visible, onClose }: Props) {
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag">
+          <BudgetSection />
           <ColorSection />
           <CurrencySection />
-          <BudgetSection />
           <CategoriesSection />
           <DataSection />
         </ScrollView>
