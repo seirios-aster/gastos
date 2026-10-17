@@ -29,36 +29,6 @@ export function setTheme(choice: ThemeChoice) {
   }
 }
 
-/** What the Settings control offers: follow the phone, or always light, or always dark. */
-export type ThemeSetting = 'system' | 'light' | 'dark';
-
-/** What the person picked last: 'system' when nothing is saved. */
-export function savedThemeSetting(): ThemeSetting {
-  try {
-    const saved = Storage.getItemSync(THEME_KEY);
-    return saved === 'light' || saved === 'dark' ? saved : 'system';
-  } catch {
-    return 'system';
-  }
-}
-
-/**
- * Apply and remember a Settings choice. 'system' hands the theme back to the phone. This switches
- * instantly: Settings is a modal, which a screenshot fade cannot cover.
- */
-export function setThemeSetting(choice: ThemeSetting) {
-  if (choice !== 'system') {
-    setTheme(choice);
-    return;
-  }
-  Appearance.setColorScheme?.('unspecified');
-  try {
-    Storage.removeItemSync(THEME_KEY);
-  } catch (error) {
-    console.warn('Could not save the theme', error);
-  }
-}
-
 /** The theme the app is showing right now. */
 export function currentTheme(): ThemeChoice {
   return Appearance.getColorScheme() === 'dark' ? 'dark' : 'light';
