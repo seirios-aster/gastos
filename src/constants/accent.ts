@@ -1,7 +1,7 @@
 import { Neutrals } from './neutrals';
 
-/** The main color people start with. Deep indigo; the app derives a readable shade for each theme from it. */
-export const DEFAULT_ACCENT = '#9A9BFF';
+/** The main color people start with. Sky blue; the app derives a readable shade for each theme from it. */
+export const DEFAULT_ACCENT = '#6FB6FF';
 
 /** Everything in the theme that follows the accent. */
 export type AccentSet = {
