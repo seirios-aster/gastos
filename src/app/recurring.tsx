@@ -125,7 +125,8 @@ export default function RecurringScreen() {
                 </View>
               )}
 
-              {active.some((item) => item.remindDays !== null) && (
+              {/* A development aid: Expo Go's notifications are shaky, so the released app leaves it out. */}
+              {__DEV__ && active.some((item) => item.remindDays !== null) && (
                 <Pressable
                   accessibilityRole="button"
                   onPress={() => void sendTest()}
