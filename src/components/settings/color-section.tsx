@@ -14,7 +14,8 @@ import { tick } from '@/lib/haptics';
 
 /** Ready-made colors. The first is the default; each one is made readable in light and dark mode. */
 const PRESETS = [
-  { hex: DEFAULT_ACCENT, label: 'Lavender' },
+  { hex: DEFAULT_ACCENT, label: 'Indigo' },
+  { hex: '#B196FF', label: 'Lavender' },
   { hex: '#6FB6FF', label: 'Sky' },
   { hex: '#4FD1C5', label: 'Teal' },
   { hex: '#6EDB9C', label: 'Mint' },
