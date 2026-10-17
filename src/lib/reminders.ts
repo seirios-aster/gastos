@@ -74,15 +74,20 @@ export function remindersAvailable(): boolean {
   return load() !== null;
 }
 
+let channelReady = false;
+
 /** Android only (ignored elsewhere). A failure here must never be mistaken for "notifications off". */
 async function ensureChannel(notifications: NotificationsModule) {
   try {
+    channelReady = false;
     await notifications.setNotificationChannelAsync(CHANNEL_ID, {
       name: 'Recurring expense reminders',
       importance: notifications.AndroidImportance.DEFAULT,
     });
+    channelReady = true;
   } catch (error) {
-    console.warn('Could not create the reminders channel', error);
+    // Expo Go can fail here; reminders then use the phone's default channel instead.
+    console.log('Could not create the reminders channel', error);
   }
 }
 
@@ -189,7 +194,7 @@ async function schedule(
       trigger: {
         type: notifications.SchedulableTriggerInputTypes.DATE,
         date: new Date(at),
-        channelId: CHANNEL_ID,
+        ...(channelReady ? { channelId: CHANNEL_ID } : {}),
       },
     });
   }
@@ -221,7 +226,7 @@ export async function sendTestReminder(): Promise<boolean> {
       trigger: {
         type: notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
         seconds: 5,
-        channelId: CHANNEL_ID,
+        ...(channelReady ? { channelId: CHANNEL_ID } : {}),
       },
     });
     return true;
