@@ -201,6 +201,28 @@ export function upcomingOccurrences<T extends Timed>(items: readonly T[], now: n
   return found.map(({ item, due }) => ({ item, due }));
 }
 
+/** The earliest day anything is due, with everything due that day. */
+export type NextCharges<T> = { due: number; items: T[]; totalCents: number };
+
+/**
+ * What is due on the soonest charge day (however far off, up to a year), or null when nothing is
+ * active. Several items can share that day, so it returns all of them and their total.
+ */
+export function nextCharges<T extends Timed & Pick<Recurring, 'amountCents'>>(
+  items: readonly T[],
+  now: number
+): NextCharges<T> | null {
+  const ahead = upcomingOccurrences(items, now, 366);
+  if (ahead.length === 0) return null;
+  const day = startOfDay(ahead[0].due);
+  const same = ahead.filter(({ due }) => startOfDay(due) === day);
+  return {
+    due: ahead[0].due,
+    items: same.map(({ item }) => item),
+    totalCents: same.reduce((sum, { item }) => sum + item.amountCents, 0),
+  };
+}
+
 /** Money leaving on each of the next `days` days (index 0 is today): the bars of a timeline chart. */
 export function upcomingDailyTotals(
   items: readonly (Timed & Pick<Recurring, 'amountCents'>)[],
