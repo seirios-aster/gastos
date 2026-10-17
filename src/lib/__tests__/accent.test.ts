@@ -1,0 +1,75 @@
+import assert from 'node:assert/strict';
+import { describe, it } from 'node:test';
+
+import { DEFAULT_ACCENT, blend, contrastRatio, deriveAccent, hexToHsl, hslToHex, isHex } from '../../constants/accent';
+import { paletteFor } from '../../constants/colors';
+
+/** A spread of picks: every 20 degrees of hue, grey to vivid, near-black to near-white. */
+const PICKS: string[] = [DEFAULT_ACCENT, '#000000', '#ffffff', '#808080', '#FFFF00', '#00FFFF'];
+for (let h = 0; h < 360; h += 20) {
+  for (const s of [0.15, 0.6, 1]) {
+    for (const l of [0.08, 0.3, 0.5, 0.7, 0.92]) PICKS.push(hslToHex(h, s, l));
+  }
+}
+
+describe('colour helpers', () => {
+  it('round-trips hex through hsl', () => {
+    for (const hex of ['#B196FF', '#0A6BD6', '#FF0000', '#123456']) {
+      const [h, s, l] = hexToHsl(hex);
+      const back = hslToHex(h, s, l);
+      for (let i = 1; i < 7; i += 2) {
+        assert.ok(Math.abs(parseInt(hex.slice(i, i + 2), 16) - parseInt(back.slice(i, i + 2), 16)) <= 1);
+      }
+    }
+  });
+
+  it('knows a hex colour when it sees one', () => {
+    assert.ok(isHex('#b196ff'));
+    assert.ok(!isHex('b196ff') && !isHex('#fff') && !isHex(null));
+  });
+
+  it('keeps the default as it is in dark mode', () => {
+    assert.equal(deriveAccent(DEFAULT_ACCENT).dark.accent, DEFAULT_ACCENT);
+  });
+
+  it('darkens the default in light mode so white text reads on it', () => {
+    const light = deriveAccent(DEFAULT_ACCENT).light;
+    assert.notEqual(light.accent, DEFAULT_ACCENT);
+    assert.ok(contrastRatio('#ffffff', light.accent) >= 4.5);
+  });
+
+  it('keeps the hue of what was picked', () => {
+    const [h] = hexToHsl('#FF5A5A');
+    const set = deriveAccent('#FF5A5A');
+    for (const scheme of ['light', 'dark'] as const) {
+      const diff = Math.abs(hexToHsl(set[scheme].accent)[0] - h);
+      assert.ok(Math.min(diff, 360 - diff) < 6, `${scheme} hue moved by ${diff}`);
+    }
+  });
+});
+
+describe('any chosen colour stays readable', () => {
+  for (const scheme of ['light', 'dark'] as const) {
+    it(`${scheme}: every pair passes the same checks as the default palette`, () => {
+      for (const pick of PICKS) {
+        const c = paletteFor(scheme, pick);
+        const surfaces = [c.background, c.backgroundElement, c.backgroundSelected];
+        const label = `${scheme} ${pick} -> ${c.accent}`;
+
+        for (const surface of [c.background, c.backgroundElement]) {
+          assert.ok(contrastRatio(c.accent, surface) >= 4.5, `${label}: accent text on ${surface}`);
+        }
+        for (const surface of surfaces) assert.ok(contrastRatio(c.accent, surface) >= 3, `${label}: graphic`);
+        assert.ok(contrastRatio(c.onAccent, c.accent) >= 4.5, `${label}: onAccent`);
+        assert.ok(contrastRatio(c.accent, c.accentSoft) >= 3, `${label}: accent on its pill`);
+        assert.ok(contrastRatio(c.text, c.accentSoft) >= 7, `${label}: text on its pill`);
+        for (const end of [c.heroFrom, c.heroTo]) {
+          assert.ok(contrastRatio(c.onHero, end) >= 4.5, `${label}: onHero on ${end}`);
+          assert.ok(contrastRatio(c.onHeroMuted, end) >= 4.5, `${label}: onHeroMuted on ${end}`);
+        }
+        const bar = blend(c.accent, c.backgroundElement, 0.8);
+        assert.ok(contrastRatio(bar, c.backgroundElement) >= 3, `${label}: chart bars`);
+      }
+    });
+  }
+});

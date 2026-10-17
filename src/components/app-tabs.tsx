@@ -1,7 +1,6 @@
 import { NativeTabs } from 'expo-router/unstable-native-tabs';
 
 import { useExpenses } from '@/context/expenses-context';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useNow } from '@/hooks/use-now';
 import { useTheme } from '@/hooks/use-theme';
 import { dueSoonCount } from '@/lib/recurring';
@@ -24,15 +23,11 @@ const ICONS = {
   },
 };
 
-// The accent at 12% (light) and 24% (dark): the press ripple on a tab.
-const RIPPLE = { light: '#0A6BD61F', dark: '#4DA3FF3D' } as const;
-
 /** The Recurring tab shows a badge when something is due within this many days. */
 const SOON_DAYS = 3;
 
 export default function AppTabs() {
   const theme = useTheme();
-  const dark = useColorScheme() === 'dark';
   const now = useNow();
   const { recurring } = useExpenses();
   // Items due today are logged the moment the app opens, so this is really tomorrow through day 3.
@@ -48,7 +43,7 @@ export default function AppTabs() {
         selected: { color: theme.text, fontSize: 12 },
       }}
       indicatorColor={theme.accentSoft}
-      rippleColor={dark ? RIPPLE.dark : RIPPLE.light}
+      rippleColor={theme.ripple}
       badgeBackgroundColor={theme.accent}
       badgeTextColor={theme.onAccent}>
       <NativeTabs.Trigger name="index">
