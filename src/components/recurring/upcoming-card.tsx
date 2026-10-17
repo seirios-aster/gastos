@@ -6,9 +6,10 @@ import { ThemedView } from '@/components/themed-view';
 import { Radius, Spacing } from '@/constants/theme';
 import { useExpenses } from '@/context/expenses-context';
 import { addDays, dueLabel, shortDateLabel } from '@/lib/dates';
-import { getCategory } from '@/lib/expenses';
+import { getCategory, type Category } from '@/lib/expenses';
 import { formatMoney } from '@/lib/money';
 import {
+  nextCharges,
   summarizeRecurring,
   upcomingDailyTotals,
   upcomingOccurrences,
@@ -23,6 +24,19 @@ type Props = {
 };
 
 /** "Next 30 days": a bar for each day with money leaving, and a line about what is next. */
+/** "Next: Netflix on Nov 16 · ₱700.00", or "Next: 5 charges on Nov 16 · ₱715.00" when several share the day. */
+function laterText(
+  later: NonNullable<ReturnType<typeof nextCharges<Recurring>>>,
+  categories: Category[],
+  currency: string
+): string {
+  const when = `on ${shortDateLabel(later.due)}`;
+  const money = formatMoney(later.totalCents, currency);
+  if (later.items.length > 1) return `Next: ${later.items.length} charges ${when} · ${money}`;
+  const [only] = later.items;
+  return `Next: ${only.title || getCategory(categories, only.category).label} ${when} · ${money}`;
+}
+
 export function UpcomingCard({ items, now }: Props) {
   const { categories, currency } = useExpenses();
 
@@ -32,6 +46,7 @@ export function UpcomingCard({ items, now }: Props) {
   const next = summarizeRecurring(items, now, DAYS).next;
 
   if (upcoming.length === 0) {
+    const later = nextCharges(items, now);
     return (
       <ThemedView type="backgroundElement" style={styles.card}>
         <ThemedText type="smallBold" accessibilityRole="header">
@@ -39,6 +54,7 @@ export function UpcomingCard({ items, now }: Props) {
         </ThemedText>
         <ThemedText type="small" themeColor="textSecondary">
           Nothing is due in the next 30 days.
+          {later ? ` ${laterText(later, categories, currency)}` : ''}
         </ThemedText>
       </ThemedView>
     );

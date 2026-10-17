@@ -9,6 +9,7 @@ import {
   dueOccurrences,
   dueSoonCount,
   monthlyEquivalentCents,
+  nextCharges,
   nextOccurrence,
   ordinal,
   reminderTimes,
@@ -396,5 +397,30 @@ describe('dueSoonCount', () => {
 
   it('is a count of zero when nothing is close, so the badge disappears', () => {
     assert.equal(dueSoonCount([entry(d(2026, 11, 1, 9))], wed, 3), 0);
+  });
+});
+
+describe('nextCharges', () => {
+  it('gives nothing when nothing is active', () => {
+    assert.equal(nextCharges([], wed), null);
+    assert.equal(nextCharges([item({ id: 1, paused: true })], wed), null);
+  });
+
+  it('returns the one item due soonest, even past 30 days', () => {
+    const far = item({ id: 1, amountCents: 70000, nextDue: d(2026, 12, 16, 9), day: 16 });
+    const farther = item({ id: 2, nextDue: d(2026, 12, 20, 9), day: 20 });
+    const next = nextCharges([farther, far], wed);
+    assert.deepEqual(next?.items.map((i) => i.id), [1]);
+    assert.equal(next?.totalCents, 70000);
+    assert.equal(next?.due, d(2026, 12, 16, 9));
+  });
+
+  it('groups everything due on that day and adds it up', () => {
+    const a = item({ id: 1, amountCents: 200, nextDue: d(2026, 11, 16, 9), day: 16 });
+    const b = item({ id: 2, amountCents: 300, nextDue: d(2026, 11, 16, 9), day: 16 });
+    const later = item({ id: 3, amountCents: 900, nextDue: d(2026, 11, 17, 9), day: 17 });
+    const next = nextCharges([later, a, b], wed);
+    assert.deepEqual(next?.items.map((i) => i.id).sort(), [1, 2]);
+    assert.equal(next?.totalCents, 500);
   });
 });
