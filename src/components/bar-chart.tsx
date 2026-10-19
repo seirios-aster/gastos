@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
@@ -15,19 +16,35 @@ type Props = {
   bars: Bar[];
   height?: number;
   accessibilityLabel: string;
+  /**
+   * Makes the chart tappable: called with the key of the bar under the finger. The whole column
+   * counts, so a thin bar is no harder to hit than a tall one.
+   */
+  onPickBar?: (key: string) => void;
 };
 
-export function BarChart({ bars, height = 110, accessibilityLabel }: Props) {
+export function BarChart({ bars, height = 110, accessibilityLabel, onPickBar }: Props) {
   const theme = useTheme();
+  const [width, setWidth] = useState(0);
   const max = Math.max(1, ...bars.map((b) => b.value));
   const gap = bars.length > 12 ? 2 : 8;
 
   return (
     <View accessible accessibilityRole="image" accessibilityLabel={accessibilityLabel}>
-      <View style={[styles.plot, { height, gap }]}>
+      <View
+        style={[styles.plot, { height, gap }]}
+        onLayout={(event) => setWidth(event.nativeEvent.layout.width)}
+        onStartShouldSetResponder={() => onPickBar !== undefined}
+        onResponderRelease={(event) => {
+          if (!onPickBar || width <= 0) return;
+          const index = Math.floor((event.nativeEvent.locationX / width) * bars.length);
+          const bar = bars[Math.min(bars.length - 1, Math.max(0, index))];
+          if (bar) onPickBar(bar.key);
+        }}>
         {bars.map((bar) => (
           <View key={bar.key} style={styles.column}>
             <View
+              pointerEvents="none"
               style={[
                 styles.bar,
                 {
