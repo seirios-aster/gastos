@@ -23,7 +23,7 @@ import { useSheetNotice } from '@/hooks/use-sheet-notice';
 import { useTheme } from '@/hooks/use-theme';
 import { tap } from '@/lib/haptics';
 import { projectedMonthCents } from '@/lib/budget';
-import { dayOfMonth, defaultDay } from '@/lib/calendar';
+import { dayOfMonth, defaultDay, isPickable } from '@/lib/calendar';
 import {
   addMonths,
   dayLabel,
@@ -230,7 +230,19 @@ export default function HistoryScreen() {
                 />
               </View>
             </View>
-            <BarChart bars={chart.bars} accessibilityLabel={`${chart.a11y}. ${chart.caption}`} />
+            <BarChart
+              bars={chart.bars}
+              accessibilityLabel={`${chart.a11y}. ${chart.caption}`}
+              // Tapping a day's bar opens that day below (the calendar does the same for screen readers).
+              onPickBar={
+                chartMode === 'days'
+                  ? (key) => {
+                      const tapped = Number(key);
+                      if (isPickable(monthTs, tapped, now)) setPick({ monthTs, day: tapped });
+                    }
+                  : undefined
+              }
+            />
             <ThemedText type="small" themeColor="textSecondary" style={Numeric}>
               {chart.caption}
             </ThemedText>

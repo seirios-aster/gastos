@@ -28,6 +28,7 @@ type Props = {
 export function DayCalendar({ monthTs, totals, selectedDay, now, currency, onPick }: Props) {
   const theme = useTheme();
   const weeks = monthWeeks(monthTs);
+  const biggest = Math.max(0, ...totals);
 
   return (
     <ThemedView type="backgroundElement" style={styles.card}>
@@ -69,20 +70,35 @@ export function DayCalendar({ monthTs, totals, selectedDay, now, currency, onPic
                     themeColor={selected ? 'onAccent' : pickable ? 'text' : 'textSecondary'}>
                     {day}
                   </ThemedText>
-                  <View
-                    style={[
-                      styles.dot,
-                      spent > 0 && { backgroundColor: selected ? theme.onAccent : theme.accent },
-                    ]}
-                  />
+                  {/* A fixed slot, so a bigger dot never moves the number above it. */}
+                  <View style={styles.dotSlot}>
+                    <View
+                      style={[
+                        styles.dot,
+                        spent > 0 && {
+                          backgroundColor: selected ? theme.onAccent : theme.accent,
+                          ...dotSize(spent, biggest),
+                        },
+                      ]}
+                    />
+                  </View>
                 </Pressable>
               </View>
             );
           })}
         </View>
       ))}
+      <ThemedText type="caption" themeColor="textSecondary" style={styles.hint}>
+        A dot marks a day with spending; a bigger dot means more spent.
+      </ThemedText>
     </ThemedView>
   );
+}
+
+/** Three dot sizes by how much of the month's biggest day was spent. */
+function dotSize(spent: number, biggest: number) {
+  const size = spent >= biggest * 0.66 ? 9 : spent >= biggest * 0.33 ? 7 : 5;
+  return { width: size, height: size, borderRadius: size / 2 };
 }
 
 const styles = StyleSheet.create({
@@ -97,6 +113,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 2,
   },
-  dot: { width: 5, height: 5, borderRadius: 3 },
+  dotSlot: { height: 9, alignItems: 'center', justifyContent: 'center' },
+  dot: { width: 5, height: 5, borderRadius: 3, backgroundColor: 'transparent' },
   pressed: { opacity: 0.7 },
+  hint: { textAlign: 'center', paddingTop: Spacing.one },
 });
