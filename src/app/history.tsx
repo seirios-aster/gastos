@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BarChart, type Bar } from '@/components/bar-chart';
 import { BudgetProgress } from '@/components/budget-progress';
+import { DayCalendar } from '@/components/day-calendar';
 import { ActionSheet } from '@/components/action-sheet';
 import { ExpenseRow } from '@/components/expense-row';
 import { ExpenseSheet } from '@/components/expense-sheet';
@@ -22,8 +23,11 @@ import { useSheetNotice } from '@/hooks/use-sheet-notice';
 import { useTheme } from '@/hooks/use-theme';
 import { tap } from '@/lib/haptics';
 import { projectedMonthCents } from '@/lib/budget';
+import { dayOfMonth, defaultDay } from '@/lib/calendar';
 import {
   addMonths,
+  dayLabel,
+  isSameDay,
   isSameMonth,
   monthLabel,
   shortDateLabel,
@@ -58,6 +62,8 @@ export default function HistoryScreen() {
   const [chartMode, setChartMode] = useState<ChartMode>('days');
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const [editing, setEditing] = useState<Expense | null>(null);
+  // The day picked on the calendar. It belongs to one month, so changing month falls back to the default.
+  const [pick, setPick] = useState<{ monthTs: number; day: number } | null>(null);
 
   const searching = query.trim().length > 0;
   const isCurrentMonth = isSameMonth(monthTs, now);
@@ -78,8 +84,18 @@ export default function HistoryScreen() {
       ? monthExpenses.filter((e) => getCategory(categories, e.category).id === activeFilter)
       : monthExpenses;
   }, [searching, expenses, categories, query, monthExpenses, activeFilter]);
-  const sections = useMemo(() => groupByDay(shown, now), [shown, now]);
-  const shownIds = useMemo(() => shown.map((e) => e.id), [shown]);
+  const day = pick && pick.monthTs === monthTs ? pick.day : defaultDay(monthTs, now);
+  // The month's list is one day at a time (picked on the calendar); a search covers everything.
+  const dayExpenses = useMemo(() => {
+    if (day === null) return [];
+    const ts = dayOfMonth(monthTs, day);
+    return shown.filter((e) => isSameDay(e.createdAt, ts));
+  }, [shown, day, monthTs]);
+  const listed = searching ? shown : dayExpenses;
+  const sections = useMemo(() => groupByDay(listed, now), [listed, now]);
+  const dayTotals = useMemo(() => dailyTotals(shown, monthTs), [shown, monthTs]);
+  const dayBreakdown = useMemo(() => categoryTotals(dayExpenses, categories), [dayExpenses, categories]);
+  const shownIds = useMemo(() => listed.map((e) => e.id), [listed]);
   const selection = useSelection(shownIds);
   const monthTotal = sumCents(monthExpenses);
 
@@ -261,6 +277,36 @@ export default function HistoryScreen() {
               })}
             </ThemedView>
           )}
+
+          <DayCalendar
+            monthTs={monthTs}
+            totals={dayTotals}
+            selectedDay={day}
+            now={now}
+            currency={currency}
+            onPick={(next) => setPick({ monthTs, day: next })}
+          />
+
+          {day !== null && dayBreakdown.length > 0 && (
+            <ThemedView type="backgroundElement" style={styles.card}>
+              <View style={styles.cardTop}>
+                <ThemedText type="smallBold">{dayLabel(dayOfMonth(monthTs, day), now)}</ThemedText>
+                <ThemedText type="smallBold" style={Numeric}>
+                  {formatMoney(sumCents(dayExpenses), currency)}
+                </ThemedText>
+              </View>
+              {dayBreakdown.map(({ category, totalCents }) => (
+                <View key={category.id} style={styles.breakdownTop}>
+                  <ThemedText type="small">
+                    {category.emoji} {category.label}
+                  </ThemedText>
+                  <ThemedText type="small" themeColor="textSecondary" style={Numeric}>
+                    {formatMoney(totalCents, currency)}
+                  </ThemedText>
+                </View>
+              ))}
+            </ThemedView>
+          )}
         </>
       )}
     </View>
@@ -294,14 +340,17 @@ export default function HistoryScreen() {
           ListHeaderComponent={header}
           initialNumToRender={20}
           stickySectionHeadersEnabled={false}
-          renderSectionHeader={({ section }) => (
-            <View style={styles.sectionHeader}>
-              <ThemedText type="smallBold">{section.label}</ThemedText>
-              <ThemedText type="small" themeColor="textSecondary" style={Numeric}>
-                {formatMoney(section.totalCents, currency)}
-              </ThemedText>
-            </View>
-          )}
+          // A picked day already has its own card above, so only a search needs the day headings.
+          renderSectionHeader={({ section }) =>
+            searching ? (
+              <View style={styles.sectionHeader}>
+                <ThemedText type="smallBold">{section.label}</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary" style={Numeric}>
+                  {formatMoney(section.totalCents, currency)}
+                </ThemedText>
+              </View>
+            ) : null
+          }
           // Rows are redrawn when what is picked changes.
           extraData={selection.ids}
           renderItem={({ item }) => (
@@ -322,9 +371,11 @@ export default function HistoryScreen() {
             <ThemedText themeColor="textSecondary" style={styles.empty}>
               {searching
                 ? `No matches for “${query.trim()}”.`
-                : isCurrentMonth
-                  ? `Nothing logged in ${monthLabel(monthTs)} yet.`
-                  : `No expenses in ${monthLabel(monthTs)}.`}
+                : day === null
+                  ? isCurrentMonth
+                    ? "Earlier days show up here. Today's spending is in the Today tab."
+                    : `No expenses in ${monthLabel(monthTs)}.`
+                  : `Nothing spent on ${shortDateLabel(dayOfMonth(monthTs, day))}${activeFilter ? ' in this category' : ''}.`}
             </ThemedText>
           }
         />
