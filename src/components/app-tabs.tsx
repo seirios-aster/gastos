@@ -7,7 +7,7 @@ import { dueSoonCount } from '@/lib/recurring';
 
 // Alpha-only PNGs (24dp, with @2x and @3x): the bar tints them with iconColor, so one file serves
 // both themes. Outline = idle, filled and heavier = selected, so the selected tab is not shown by
-// color alone. Made from Material Symbols (Apache-2.0): home, history, event_repeat.
+// color alone. Made from Material Symbols (Apache-2.0): home, history, event_repeat; the loans icon (two arrows) is drawn to match.
 const ICONS = {
   today: {
     default: require('@/assets/images/tabIcons/tab-today.png'),
@@ -20,6 +20,10 @@ const ICONS = {
   recurring: {
     default: require('@/assets/images/tabIcons/tab-recurring.png'),
     selected: require('@/assets/images/tabIcons/tab-recurring-active.png'),
+  },
+  loans: {
+    default: require('@/assets/images/tabIcons/tab-loans.png'),
+    selected: require('@/assets/images/tabIcons/tab-loans-active.png'),
   },
 };
 
@@ -66,6 +70,11 @@ export default function AppTabs() {
         <NativeTabs.Trigger.Badge hidden={soon === 0}>
           {soon > 0 ? String(soon) : undefined}
         </NativeTabs.Trigger.Badge>
+      </NativeTabs.Trigger>
+
+      <NativeTabs.Trigger name="loans">
+        <NativeTabs.Trigger.Label>Loans</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon src={ICONS.loans} renderingMode="template" />
       </NativeTabs.Trigger>
     </NativeTabs>
   );

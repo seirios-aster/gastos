@@ -15,18 +15,24 @@ import {
   deleteAllExpenseRows,
   deleteCategoryRow,
   deleteExpenseRows,
+  deleteLoanRows,
+  deletePaymentRow,
   deleteRecurringRows,
   importBackupRows,
   insertCategory,
   insertExpense,
   insertExpenses,
+  insertLoan,
+  insertPaymentRow,
   insertRecurring,
   loadCategories,
   loadExpenses,
+  loadLoans,
   loadRecurring,
   runDueRecurring,
   setRecurringPausedRow,
   updateExpenseRow,
+  updateLoanRow,
   updateRecurringRow,
 } from '@/lib/db';
 import {
@@ -38,6 +44,7 @@ import {
   type Expense,
   type ExpenseInput,
 } from '@/lib/expenses';
+import type { Loan, LoanInput } from '@/lib/loans';
 import type { Recurring, RecurringInput } from '@/lib/recurring';
 import { syncReminders } from '@/lib/reminders';
 
@@ -49,13 +56,15 @@ const LAST_CATEGORY_KEY = 'last_category';
 const UNDO_MS = 6000;
 
 type ImportResult =
-  | { ok: true; expenses: number; categories: number; recurring: number }
+  | { ok: true; expenses: number; categories: number; recurring: number; loans: number }
   | { ok: false; error: string };
 
 type ExpensesContextValue = {
   expenses: Expense[];
   categories: Category[];
   recurring: Recurring[];
+  /** Money lent to or borrowed from people, with the payments made on each. */
+  loans: Loan[];
   ready: boolean;
   /** Currency symbol shown before amounts. Empty string means no currency. */
   currency: string;
@@ -85,6 +94,13 @@ type ExpensesContextValue = {
   deleteRecurring: (id: number) => Promise<void>;
   /** Stop several recurring items at once. */
   deleteRecurrings: (ids: number[]) => Promise<void>;
+  addLoan: (input: LoanInput) => Promise<void>;
+  updateLoan: (id: number, input: LoanInput) => Promise<void>;
+  /** Delete a loan and its payments. */
+  deleteLoan: (id: number) => Promise<void>;
+  /** Record money paid back on a loan. */
+  addPayment: (loanId: number, amountCents: number, paidAt: number) => Promise<void>;
+  deletePayment: (id: number) => Promise<void>;
   /** All data as a JSON backup that `importBackup` accepts. */
   exportBackup: () => string;
   importBackup: (text: string) => Promise<ImportResult>;
@@ -102,6 +118,7 @@ export function ExpensesProvider({ children }: { children: React.ReactNode }) {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [categories, setCategories] = useState<Category[]>(DEFAULT_CATEGORIES);
   const [recurring, setRecurring] = useState<Recurring[]>([]);
+  const [loans, setLoans] = useState<Loan[]>([]);
   const [ready, setReady] = useState(false);
   const [currency, setCurrencyState] = useState(() => Storage.getItemSync(CURRENCY_KEY) ?? '');
   const [budgetCents, setBudgetState] = useState(readBudget);
@@ -147,15 +164,17 @@ export function ExpensesProvider({ children }: { children: React.ReactNode }) {
     let cancelled = false;
     (async () => {
       try {
-        const [nextExpenses, nextCategories, nextRecurring] = await Promise.all([
+        const [nextExpenses, nextCategories, nextRecurring, nextLoans] = await Promise.all([
           loadExpenses(db),
           loadCategories(db),
           loadRecurring(db),
+          loadLoans(db),
         ]);
         if (cancelled) return;
         setExpenses(nextExpenses);
         setCategories(nextCategories);
         setRecurring(nextRecurring);
+        setLoans(nextLoans);
       } catch (error) {
         console.warn('Could not load data', error);
       } finally {
@@ -178,16 +197,16 @@ export function ExpensesProvider({ children }: { children: React.ReactNode }) {
 
   // Keep the phone's pending reminders in step with the recurring items, and top them up whenever
   // the app comes back to the front so they never run out.
-  const reminderInputs = useRef({ recurring, categories, currency });
+  const reminderInputs = useRef({ recurring, loans, categories, currency });
   useEffect(() => {
-    reminderInputs.current = { recurring, categories, currency };
-    if (ready) void syncReminders(recurring, categories, currency);
-  }, [ready, recurring, categories, currency]);
+    reminderInputs.current = { recurring, loans, categories, currency };
+    if (ready) void syncReminders(recurring, loans, categories, currency);
+  }, [ready, recurring, loans, categories, currency]);
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (state) => {
       if (state !== 'active') return;
       const latest = reminderInputs.current;
-      void syncReminders(latest.recurring, latest.categories, latest.currency);
+      void syncReminders(latest.recurring, latest.loans, latest.categories, latest.currency);
     });
     return () => subscription.remove();
   }, []);
@@ -335,9 +354,49 @@ export function ExpensesProvider({ children }: { children: React.ReactNode }) {
 
   const deleteRecurring = useCallback((id: number) => deleteRecurrings([id]), [deleteRecurrings]);
 
+  const addLoan = useCallback(
+    async (input: LoanInput) => {
+      await insertLoan(db, input);
+      setLoans(await loadLoans(db));
+    },
+    [db]
+  );
+
+  const updateLoan = useCallback(
+    async (id: number, input: LoanInput) => {
+      await updateLoanRow(db, id, input);
+      setLoans(await loadLoans(db));
+    },
+    [db]
+  );
+
+  const deleteLoan = useCallback(
+    async (id: number) => {
+      await deleteLoanRows(db, [id]);
+      setLoans((prev) => prev.filter((loan) => loan.id !== id));
+    },
+    [db]
+  );
+
+  const addPayment = useCallback(
+    async (loanId: number, amountCents: number, paidAt: number) => {
+      await insertPaymentRow(db, loanId, amountCents, paidAt);
+      setLoans(await loadLoans(db));
+    },
+    [db]
+  );
+
+  const deletePayment = useCallback(
+    async (id: number) => {
+      await deletePaymentRow(db, id);
+      setLoans(await loadLoans(db));
+    },
+    [db]
+  );
+
   const exportBackup = useCallback(
-    () => toBackupJson({ expenses, categories, recurring }, Date.now()),
-    [expenses, categories, recurring]
+    () => toBackupJson({ expenses, categories, recurring, loans }, Date.now()),
+    [expenses, categories, recurring, loans]
   );
 
   const importBackup = useCallback(
@@ -357,14 +416,16 @@ export function ExpensesProvider({ children }: { children: React.ReactNode }) {
       } finally {
         syncing.current = false;
       }
-      const [nextExpenses, nextCategories, nextRecurring] = await Promise.all([
+      const [nextExpenses, nextCategories, nextRecurring, nextLoans] = await Promise.all([
         loadExpenses(db),
         loadCategories(db),
         loadRecurring(db),
+        loadLoans(db),
       ]);
       setExpenses(nextExpenses);
       setCategories(nextCategories);
       setRecurring(nextRecurring);
+      setLoans(nextLoans);
       await syncRecurring();
       return { ok: true, ...counts };
     },
@@ -376,6 +437,7 @@ export function ExpensesProvider({ children }: { children: React.ReactNode }) {
       expenses,
       categories,
       recurring,
+      loans,
       ready,
       currency,
       setCurrency,
@@ -398,6 +460,11 @@ export function ExpensesProvider({ children }: { children: React.ReactNode }) {
       setRecurringPaused,
       deleteRecurring,
       deleteRecurrings,
+      addLoan,
+      updateLoan,
+      deleteLoan,
+      addPayment,
+      deletePayment,
       exportBackup,
       importBackup,
     }),
@@ -405,6 +472,7 @@ export function ExpensesProvider({ children }: { children: React.ReactNode }) {
       expenses,
       categories,
       recurring,
+      loans,
       ready,
       currency,
       setCurrency,
@@ -427,6 +495,11 @@ export function ExpensesProvider({ children }: { children: React.ReactNode }) {
       setRecurringPaused,
       deleteRecurring,
       deleteRecurrings,
+      addLoan,
+      updateLoan,
+      deleteLoan,
+      addPayment,
+      deletePayment,
       exportBackup,
       importBackup,
     ]

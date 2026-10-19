@@ -28,6 +28,9 @@ export default function AppTabs() {
           <TabTrigger name="recurring" href="/recurring" asChild>
             <TabButton>Recurring</TabButton>
           </TabTrigger>
+          <TabTrigger name="loans" href="/loans" asChild>
+            <TabButton>Loans</TabButton>
+          </TabTrigger>
         </CustomTabList>
       </TabList>
     </Tabs>

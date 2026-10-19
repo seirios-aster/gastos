@@ -50,3 +50,25 @@ export const confirmStopRecurring = (count: number, onConfirm: () => void): Shee
     destructive: true,
     onConfirm,
   });
+
+/** Asked before deleting a loan; its payments go with it and there is no undo. */
+export const confirmDeleteLoan = (person: string, onConfirm: () => void): SheetNotice =>
+  confirm({
+    title: 'Delete this loan?',
+    message: `The loan with ${person} and every payment on it will be removed.`,
+    confirmLabel: 'Delete loan',
+    cancelLabel: 'Keep it',
+    destructive: true,
+    onConfirm,
+  });
+
+/** Asked before removing a recorded payment, which raises the loan's balance again. */
+export const confirmRemovePayment = (onConfirm: () => void): SheetNotice =>
+  confirm({
+    title: 'Remove this payment?',
+    message: 'The amount goes back onto what is still owed.',
+    confirmLabel: 'Remove',
+    cancelLabel: 'Keep it',
+    destructive: true,
+    onConfirm,
+  });

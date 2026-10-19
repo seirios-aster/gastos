@@ -9,20 +9,26 @@ import {
   deleteCategoryRow,
   deleteExpenseRow,
   deleteExpenseRows,
+  deleteLoanRows,
+  deletePaymentRow,
   deleteRecurringRow,
   deleteRecurringRows,
   importBackupRows,
   insertCategory,
   insertExpense,
   insertExpenses,
+  insertLoan,
+  insertPaymentRow,
   insertRecurring,
   loadCategories,
   loadExpenses,
+  loadLoans,
   loadRecurring,
   migrate,
   runDueRecurring,
   setRecurringPausedRow,
   updateExpenseRow,
+  updateLoanRow,
   updateRecurringRow,
 } from '../db';
 import type { Backup } from '../expenses';
@@ -78,7 +84,7 @@ describe('migrate', () => {
     await migrate(db);
     await migrate(db); // idempotent
 
-    assert.equal((raw.prepare('PRAGMA user_version').get() as { user_version: number }).user_version, 4);
+    assert.equal((raw.prepare('PRAGMA user_version').get() as { user_version: number }).user_version, 5);
     const expenses = await loadExpenses(db);
     assert.equal(expenses.length, 1);
     assert.equal(expenses[0].title, 'Old coffee');
@@ -104,7 +110,7 @@ describe('migrate', () => {
     await migrate(db);
     await migrate(db); // idempotent
 
-    assert.equal((raw.prepare('PRAGMA user_version').get() as { user_version: number }).user_version, 4);
+    assert.equal((raw.prepare('PRAGMA user_version').get() as { user_version: number }).user_version, 5);
     const [rent] = await loadRecurring(db);
     assert.equal(rent.title, 'Rent');
     assert.equal(rent.nextDue, 5000);
@@ -268,6 +274,7 @@ const backupOf = (parts: Partial<Backup>): Backup => ({
   categories: [],
   expenses: [],
   recurring: [],
+  loans: [],
   ...parts,
 });
 
@@ -296,8 +303,8 @@ describe('importBackupRows', () => {
     const backup = backupOf({
       expenses: [lunch, { ...lunch, id: 8, title: 'Dinner', createdAt: d(2026, 10, 2) }],
     });
-    assert.deepEqual(await importBackupRows(db, backup, now), { expenses: 2, categories: 0, recurring: 0 });
-    assert.deepEqual(await importBackupRows(db, backup, now), { expenses: 0, categories: 0, recurring: 0 });
+    assert.deepEqual(await importBackupRows(db, backup, now), { expenses: 2, categories: 0, recurring: 0, loans: 0 });
+    assert.deepEqual(await importBackupRows(db, backup, now), { expenses: 0, categories: 0, recurring: 0, loans: 0 });
     assert.equal((await loadExpenses(db)).length, 2);
   });
 
@@ -313,7 +320,7 @@ describe('importBackupRows', () => {
         { ...lunch, id: 9, title: 'Mystery', category: 'c_gone' },
       ],
     });
-    assert.deepEqual(await importBackupRows(db, backup, now), { expenses: 2, categories: 1, recurring: 0 });
+    assert.deepEqual(await importBackupRows(db, backup, now), { expenses: 2, categories: 1, recurring: 0, loans: 0 });
     const categories = await loadCategories(db);
     assert.equal(categories.find((c) => c.id === 'food')?.label, 'Food');
     assert.equal(categories[categories.length - 1].id, 'other');
@@ -477,5 +484,117 @@ describe('pausing recurring items', () => {
     await setRecurringPausedRow(db, 999, false, d(2026, 10, 16));
     await setRecurringPausedRow(db, 999, true, d(2026, 10, 16));
     assert.deepEqual(await loadRecurring(db), []);
+  });
+});
+
+describe('loans', () => {
+  const input = (over: Partial<import('../loans').LoanInput> = {}) => ({
+    person: '  Marco ',
+    direction: 'lent' as const,
+    amountCents: 150000,
+    note: 'groceries',
+    createdAt: d(2026, 10, 1),
+    dueAt: d(2026, 10, 30, 9),
+    remind: true,
+    ...over,
+  });
+  const open = async () => {
+    const raw = new DatabaseSync(':memory:');
+    const db = makeDb(raw);
+    await migrate(db);
+    return db;
+  };
+
+  it('stores a loan, with its payments in order, and reads it back', async () => {
+    const db = await open();
+    const id = await insertLoan(db, input());
+    await insertPaymentRow(db, id, 20000, d(2026, 10, 9));
+    await insertPaymentRow(db, id, 30000, d(2026, 10, 5));
+    const [loan] = await loadLoans(db);
+    assert.equal(loan.person, 'Marco');
+    assert.equal(loan.direction, 'lent');
+    assert.equal(loan.remind, true);
+    assert.equal(loan.dueAt, d(2026, 10, 30, 9));
+    assert.deepEqual(loan.payments.map((p) => p.amountCents), [30000, 20000]);
+  });
+
+  it('keeps a missing due date as null', async () => {
+    const db = await open();
+    await insertLoan(db, input({ dueAt: null, remind: false }));
+    const [loan] = await loadLoans(db);
+    assert.equal(loan.dueAt, null);
+    assert.equal(loan.remind, false);
+  });
+
+  it('updates a loan without touching its payments', async () => {
+    const db = await open();
+    const id = await insertLoan(db, input());
+    await insertPaymentRow(db, id, 10000, d(2026, 10, 5));
+    await updateLoanRow(db, id, input({ person: 'Marco R.', amountCents: 200000, direction: 'borrowed' }));
+    const [loan] = await loadLoans(db);
+    assert.equal(loan.person, 'Marco R.');
+    assert.equal(loan.amountCents, 200000);
+    assert.equal(loan.direction, 'borrowed');
+    assert.equal(loan.payments.length, 1);
+  });
+
+  it('removes one payment', async () => {
+    const db = await open();
+    const id = await insertLoan(db, input());
+    await insertPaymentRow(db, id, 10000, d(2026, 10, 5));
+    await insertPaymentRow(db, id, 20000, d(2026, 10, 6));
+    const [{ payments }] = await loadLoans(db);
+    await deletePaymentRow(db, payments[0].id);
+    assert.deepEqual((await loadLoans(db))[0].payments.map((p) => p.amountCents), [20000]);
+  });
+
+  it('deletes loans together with their payments and leaves the others', async () => {
+    const db = await open();
+    const a = await insertLoan(db, input());
+    const b = await insertLoan(db, input({ person: 'Ana' }));
+    await insertPaymentRow(db, a, 10000, d(2026, 10, 5));
+    await insertPaymentRow(db, b, 20000, d(2026, 10, 5));
+    await deleteLoanRows(db, [a]);
+    const loans = await loadLoans(db);
+    assert.deepEqual(loans.map((l) => l.person), ['Ana']);
+    assert.equal(loans[0].payments.length, 1);
+  });
+
+  it('imports loans with payments, and a second import adds nothing', async () => {
+    const db = await open();
+    const loan = {
+      id: 5,
+      person: 'marco',
+      direction: 'lent' as const,
+      amountCents: 150000,
+      note: '',
+      createdAt: d(2026, 10, 1),
+      dueAt: null,
+      remind: false,
+      payments: [{ id: 9, amountCents: 50000, paidAt: d(2026, 10, 3) }],
+    };
+    const backup = backupOf({ loans: [loan] });
+    assert.equal((await importBackupRows(db, backup)).loans, 1);
+    assert.equal((await importBackupRows(db, backup)).loans, 0);
+    const loans = await loadLoans(db);
+    assert.equal(loans.length, 1);
+    assert.equal(loans[0].payments.length, 1);
+  });
+
+  it('keeps two identical loans from the same backup', async () => {
+    const db = await open();
+    const loan = {
+      id: 1,
+      person: 'Ana',
+      direction: 'borrowed' as const,
+      amountCents: 10000,
+      note: '',
+      createdAt: d(2026, 10, 1),
+      dueAt: null,
+      remind: false,
+      payments: [],
+    };
+    const result = await importBackupRows(db, backupOf({ loans: [loan, { ...loan, id: 2 }] }));
+    assert.equal(result.loans, 2);
   });
 });

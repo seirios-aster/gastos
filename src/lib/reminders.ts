@@ -2,6 +2,7 @@ import { Linking } from 'react-native';
 
 import { getCategory, type Category } from './expenses';
 import { formatMoney } from './money';
+import { balanceCents, loanReminderTime, type Loan } from './loans';
 import { reminderTimes, type Recurring } from './recurring';
 
 type Full = typeof import('expo-notifications');
@@ -172,8 +173,23 @@ function reminderContent(item: Recurring, categories: Category[], currency: stri
   };
 }
 
+/** The notification for a loan that falls due: who, how much, and which way the money goes. */
+function loanContent(loan: Loan, currency: string) {
+  const left = formatMoney(balanceCents(loan), currency);
+  return loan.direction === 'lent'
+    ? {
+        title: `${loan.person} was due to pay you back today`,
+        body: `${left} is still open. Open Gastos to record a payment or send a reminder.`,
+      }
+    : {
+        title: `Time to pay ${loan.person} back`,
+        body: `You owe ${left}, due today. Open Gastos to record the payment.`,
+      };
+}
+
 async function schedule(
   items: Recurring[],
+  loans: Loan[],
   categories: Category[],
   currency: string
 ): Promise<void> {
@@ -182,19 +198,28 @@ async function schedule(
 
   // Everything pending belongs to this app's reminders, so start clean and schedule it all again.
   await notifications.cancelAllScheduledNotificationsAsync();
-  if (!items.some((item) => !item.paused && item.remindDays !== null)) return;
+  const now = Date.now();
+  const dueLoans = loans.filter((loan) => loanReminderTime(loan, now) !== null);
+  const hasRecurring = items.some((item) => !item.paused && item.remindDays !== null);
+  if (!hasRecurring && dueLoans.length === 0) return;
   if (!isAllowed(await notifications.getPermissionsAsync())) return;
 
-  const now = Date.now();
   // Soonest first, so if the cap bites it drops the furthest-away ones.
-  const upcoming = items
-    .flatMap((item) => reminderTimes(item, now, PER_ITEM).map((at) => ({ item, at })))
+  const upcoming = [
+    ...items.flatMap((item) =>
+      reminderTimes(item, now, PER_ITEM).map((at) => ({ at, content: reminderContent(item, categories, currency) }))
+    ),
+    ...dueLoans.map((loan) => ({
+      at: loanReminderTime(loan, now) as number,
+      content: loanContent(loan, currency),
+    })),
+  ]
     .sort((a, b) => a.at - b.at)
     .slice(0, MAX_TOTAL);
 
-  for (const { item, at } of upcoming) {
+  for (const { content, at } of upcoming) {
     await notifications.scheduleNotificationAsync({
-      content: reminderContent(item, categories, currency),
+      content,
       trigger: {
         type: notifications.SchedulableTriggerInputTypes.DATE,
         date: new Date(at),
@@ -207,14 +232,15 @@ async function schedule(
 // Syncs queue up so two quick changes can never interleave their cancel and schedule steps.
 let queue: Promise<void> = Promise.resolve();
 
-/** Make the phone's pending reminders match the recurring items. Safe to call as often as needed. */
+/** Make the phone's pending reminders match the recurring items and loan due dates. Safe to call as often as needed. */
 export function syncReminders(
   items: Recurring[],
+  loans: Loan[],
   categories: Category[],
   currency: string
 ): Promise<void> {
   queue = queue
-    .then(() => schedule(items, categories, currency))
+    .then(() => schedule(items, loans, categories, currency))
     .catch((error) => console.warn('Could not schedule reminders', error));
   return queue;
 }
