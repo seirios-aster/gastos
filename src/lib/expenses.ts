@@ -1,4 +1,5 @@
 import { dayKey, dayLabel, daysInMonth, isSameMonth, startOfMonth, addMonths } from './dates';
+import { cleanPerson, type Loan, type Payment } from './loans';
 import { MAX_CENTS } from './money';
 import { MAX_REMIND_DAYS, type Recurring } from './recurring';
 
@@ -170,10 +171,12 @@ export type Backup = {
   categories: Category[];
   expenses: Expense[];
   recurring: Recurring[];
+  /** Older backups have none. */
+  loans: Loan[];
 };
 
 export function toBackupJson(
-  data: { expenses: Expense[]; categories: Category[]; recurring: Recurring[] },
+  data: { expenses: Expense[]; categories: Category[]; recurring: Recurring[]; loans: Loan[] },
   exportedAt: number
 ): string {
   const backup: Backup = {
@@ -182,6 +185,7 @@ export function toBackupJson(
     categories: data.categories,
     expenses: data.expenses,
     recurring: data.recurring,
+    loans: data.loans,
   };
   return JSON.stringify(backup);
 }
@@ -189,6 +193,8 @@ export function toBackupJson(
 const MAX_EXPENSES = 200_000;
 const MAX_CATEGORIES = 500;
 const MAX_RECURRING = 1_000;
+const MAX_LOANS = 20_000;
+const MAX_PAYMENTS_PER_LOAN = 1_000;
 /** Longest note the app lets you type. */
 export const MAX_NOTE_LENGTH = 200;
 /** Backups accept longer notes than the app allows (older data), and trim rather than refuse them. */
@@ -257,6 +263,42 @@ function readRecurring(value: unknown): Recurring | null {
   };
 }
 
+function readLoan(value: unknown): Loan | null {
+  if (!isRecord(value)) return null;
+  const { id, person, direction, amountCents, note, createdAt, dueAt, remind, payments } = value;
+  if (!isInt(id, 1, Number.MAX_SAFE_INTEGER) || typeof person !== 'string') return null;
+  const name = cleanPerson(person);
+  if (name.length === 0) return null;
+  if (direction !== 'lent' && direction !== 'borrowed') return null;
+  if (!isInt(amountCents, 1, MAX_CENTS) || typeof note !== 'string' || !isTimestamp(createdAt)) return null;
+  if (dueAt != null && !isTimestamp(dueAt)) return null;
+  if (!Array.isArray(payments) || payments.length > MAX_PAYMENTS_PER_LOAN) return null;
+  const readPayment = (item: unknown): Payment | null => {
+    if (!isRecord(item)) return null;
+    const { id: paymentId, amountCents: paid, paidAt } = item;
+    if (!isInt(paymentId, 1, Number.MAX_SAFE_INTEGER) || !isInt(paid, 1, MAX_CENTS)) return null;
+    if (!isTimestamp(paidAt)) return null;
+    return { id: paymentId, amountCents: paid, paidAt };
+  };
+  const readPayments: Payment[] = [];
+  for (const item of payments) {
+    const payment = readPayment(item);
+    if (!payment) return null;
+    readPayments.push(payment);
+  }
+  return {
+    id,
+    person: name,
+    direction,
+    amountCents,
+    note: note.slice(0, MAX_TITLE_LENGTH),
+    createdAt,
+    dueAt: typeof dueAt === 'number' ? dueAt : null,
+    remind: remind === true,
+    payments: readPayments,
+  };
+}
+
 function readList<T>(
   value: unknown,
   name: string,
@@ -285,7 +327,7 @@ export function parseBackup(
 
   try {
     if (!isRecord(data)) throw new InvalidBackup('This is not a Gastos backup.');
-    const { version, exportedAt, categories, expenses, recurring } = data;
+    const { version, exportedAt, categories, expenses, recurring, loans } = data;
     if (version !== 1) throw new InvalidBackup('This backup version is not supported.');
     if (!isTimestamp(exportedAt)) throw new InvalidBackup('The backup date is not valid.');
     return {
@@ -296,6 +338,8 @@ export function parseBackup(
         categories: readList(categories, 'categories', MAX_CATEGORIES, readCategory),
         expenses: readList(expenses, 'expenses', MAX_EXPENSES, readExpense),
         recurring: readList(recurring, 'recurring items', MAX_RECURRING, readRecurring),
+        // Backups made before loans existed have no list; that means no loans.
+        loans: loans === undefined ? [] : readList(loans, 'loans', MAX_LOANS, readLoan),
       },
     };
   } catch (error) {

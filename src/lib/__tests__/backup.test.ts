@@ -19,7 +19,7 @@ const recurring: Recurring[] = [
   { id: 2, title: 'Gym', amountCents: 2000, category: 'food', frequency: 'weekly', day: 0, nextDue: t, paused: true, remindDays: null },
 ];
 
-const valid = (): Backup => JSON.parse(toBackupJson({ expenses, categories, recurring }, t));
+const valid = (): Backup => JSON.parse(toBackupJson({ expenses, categories, recurring, loans: [] }, t));
 const reject = (backup: unknown, pattern?: RegExp) => {
   const result = parseBackup(typeof backup === 'string' ? backup : JSON.stringify(backup));
   assert.equal(result.ok, false);
@@ -31,13 +31,13 @@ const reject = (backup: unknown, pattern?: RegExp) => {
 
 describe('backup round trip', () => {
   it('restores exactly what was exported', () => {
-    const result = parseBackup(toBackupJson({ expenses, categories, recurring }, t));
+    const result = parseBackup(toBackupJson({ expenses, categories, recurring, loans: [] }, t));
     assert.ok(result.ok);
-    assert.deepEqual(result.backup, { version: 1, exportedAt: t, categories, expenses, recurring });
+    assert.deepEqual(result.backup, { version: 1, exportedAt: t, categories, expenses, recurring, loans: [] });
   });
 
   it('handles an empty ledger and surrounding whitespace', () => {
-    const json = toBackupJson({ expenses: [], categories: [], recurring: [] }, t);
+    const json = toBackupJson({ expenses: [], categories: [], recurring: [], loans: [] }, t);
     const result = parseBackup(`﻿ \n${json}\n`);
     assert.ok(result.ok);
     assert.deepEqual(result.backup.expenses, []);
@@ -178,5 +178,51 @@ describe('malformed backups', () => {
     reject({ ...valid(), expenses: [...full, row] }, /too many/);
     reject({ ...valid(), categories: Array.from({ length: 501 }, () => categories[0]) }, /too many/);
     reject({ ...valid(), recurring: Array.from({ length: 1001 }, () => recurring[0]) }, /too many/);
+  });
+});
+
+describe('backup with loans', () => {
+  const loan = {
+    id: 3,
+    person: '  Marco  Reyes ',
+    direction: 'lent',
+    amountCents: 150000,
+    note: 'groceries',
+    createdAt: t,
+    dueAt: t + 86_400_000,
+    remind: true,
+    payments: [{ id: 1, amountCents: 50000, paidAt: t }],
+  };
+  const withLoans = (loans: unknown) => {
+    const data = JSON.parse(toBackupJson({ expenses, categories, recurring, loans: [] }, t));
+    return JSON.stringify({ ...data, loans });
+  };
+
+  it('keeps loans and their payments, and tidies the name', () => {
+    const result = parseBackup(withLoans([loan]));
+    assert.ok(result.ok);
+    assert.equal(result.backup.loans[0].person, 'Marco Reyes');
+    assert.equal(result.backup.loans[0].payments[0].amountCents, 50000);
+  });
+
+  it('accepts an older backup that has no loans at all', () => {
+    const data = JSON.parse(toBackupJson({ expenses, categories, recurring, loans: [] }, t));
+    delete data.loans;
+    const result = parseBackup(JSON.stringify(data));
+    assert.ok(result.ok);
+    assert.deepEqual(result.backup.loans, []);
+  });
+
+  it('refuses a loan that is not valid', () => {
+    for (const bad of [
+      { ...loan, direction: 'gave' },
+      { ...loan, amountCents: 0 },
+      { ...loan, person: '   ' },
+      { ...loan, payments: [{ id: 1, amountCents: -5, paidAt: t }] },
+      { ...loan, payments: 'none' },
+    ]) {
+      assert.equal(parseBackup(withLoans([bad])).ok, false);
+    }
+    assert.equal(parseBackup(withLoans('nope')).ok, false);
   });
 });

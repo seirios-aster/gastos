@@ -9,6 +9,7 @@ import {
   type ExpenseInput,
 } from './expenses';
 import { startOfDay } from './dates';
+import { cleanPerson, type Direction, type Loan, type LoanInput, type Payment } from './loans';
 import {
   advance,
   dueOccurrences,
@@ -19,7 +20,7 @@ import {
 } from './recurring';
 
 /** Bump this and add a `version < N` block in `migrate` whenever the schema changes. */
-const SCHEMA_VERSION = 4;
+const SCHEMA_VERSION = 5;
 
 type ExpenseRow = {
   id: number;
@@ -42,6 +43,19 @@ type RecurringRow = {
   paused: number;
   remind_days: number | null;
 };
+
+type LoanRow = {
+  id: number;
+  person: string;
+  direction: string;
+  amount_cents: number;
+  note: string;
+  created_at: number;
+  due_at: number | null;
+  remind: number;
+};
+
+type PaymentRow = { id: number; loan_id: number; amount_cents: number; paid_at: number };
 
 export async function migrate(db: SQLiteDatabase) {
   await db.execAsync('PRAGMA journal_mode = WAL;');
@@ -101,6 +115,28 @@ export async function migrate(db: SQLiteDatabase) {
       await db.execAsync('ALTER TABLE recurring ADD COLUMN remind_days INTEGER;');
     }
 
+    if (version < 5) {
+      await db.execAsync(`
+        CREATE TABLE IF NOT EXISTS loans (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          person TEXT NOT NULL,
+          direction TEXT NOT NULL,
+          amount_cents INTEGER NOT NULL,
+          note TEXT NOT NULL DEFAULT '',
+          created_at INTEGER NOT NULL,
+          due_at INTEGER,
+          remind INTEGER NOT NULL DEFAULT 0
+        );
+        CREATE TABLE IF NOT EXISTS loan_payments (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          loan_id INTEGER NOT NULL,
+          amount_cents INTEGER NOT NULL,
+          paid_at INTEGER NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_loan_payments_loan ON loan_payments(loan_id);
+      `);
+    }
+
     await db.execAsync(`PRAGMA user_version = ${SCHEMA_VERSION};`);
   });
 }
@@ -153,7 +189,11 @@ export async function deleteExpenseRow(db: SQLiteDatabase, id: number) {
 /** SQLite allows only so many "?" in one statement, so long lists are deleted in chunks. */
 const DELETE_CHUNK = 400;
 
-async function deleteByIds(db: SQLiteDatabase, table: 'expenses' | 'recurring', ids: number[]) {
+async function deleteByIds(
+  db: SQLiteDatabase,
+  table: 'expenses' | 'recurring',
+  ids: number[]
+) {
   await db.withTransactionAsync(async () => {
     for (let i = 0; i < ids.length; i += DELETE_CHUNK) {
       const chunk = ids.slice(i, i + DELETE_CHUNK);
@@ -351,6 +391,94 @@ export async function runDueRecurring(db: SQLiteDatabase, now: number): Promise<
   return added;
 }
 
+// ------------------------------------------------------------------- loans
+
+export async function loadLoans(db: SQLiteDatabase): Promise<Loan[]> {
+  const [rows, paymentRows] = await Promise.all([
+    db.getAllAsync<LoanRow>(
+      'SELECT id, person, direction, amount_cents, note, created_at, due_at, remind FROM loans ORDER BY created_at DESC, id DESC'
+    ),
+    db.getAllAsync<PaymentRow>(
+      'SELECT id, loan_id, amount_cents, paid_at FROM loan_payments ORDER BY paid_at, id'
+    ),
+  ]);
+  const byLoan = new Map<number, Payment[]>();
+  for (const row of paymentRows) {
+    const list = byLoan.get(row.loan_id) ?? [];
+    list.push({ id: row.id, amountCents: row.amount_cents, paidAt: row.paid_at });
+    byLoan.set(row.loan_id, list);
+  }
+  return rows.map((row) => ({
+    id: row.id,
+    person: row.person,
+    direction: (row.direction === 'borrowed' ? 'borrowed' : 'lent') as Direction,
+    amountCents: row.amount_cents,
+    note: row.note,
+    createdAt: row.created_at,
+    dueAt: row.due_at,
+    remind: row.remind === 1,
+    payments: byLoan.get(row.id) ?? [],
+  }));
+}
+
+export async function insertLoan(db: SQLiteDatabase, input: LoanInput): Promise<number> {
+  const result = await db.runAsync(
+    'INSERT INTO loans (person, direction, amount_cents, note, created_at, due_at, remind) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    cleanPerson(input.person),
+    input.direction,
+    input.amountCents,
+    input.note,
+    input.createdAt,
+    input.dueAt,
+    input.remind ? 1 : 0
+  );
+  return result.lastInsertRowId;
+}
+
+export async function updateLoanRow(db: SQLiteDatabase, id: number, input: LoanInput) {
+  await db.runAsync(
+    'UPDATE loans SET person = ?, direction = ?, amount_cents = ?, note = ?, created_at = ?, due_at = ?, remind = ? WHERE id = ?',
+    cleanPerson(input.person),
+    input.direction,
+    input.amountCents,
+    input.note,
+    input.createdAt,
+    input.dueAt,
+    input.remind ? 1 : 0,
+    id
+  );
+}
+
+export async function insertPaymentRow(
+  db: SQLiteDatabase,
+  loanId: number,
+  amountCents: number,
+  paidAt: number
+) {
+  await db.runAsync(
+    'INSERT INTO loan_payments (loan_id, amount_cents, paid_at) VALUES (?, ?, ?)',
+    loanId,
+    amountCents,
+    paidAt
+  );
+}
+
+export async function deletePaymentRow(db: SQLiteDatabase, id: number) {
+  await db.runAsync('DELETE FROM loan_payments WHERE id = ?', id);
+}
+
+/** Delete loans together with their payments, all or nothing. */
+export async function deleteLoanRows(db: SQLiteDatabase, ids: number[]) {
+  await db.withTransactionAsync(async () => {
+    for (let i = 0; i < ids.length; i += DELETE_CHUNK) {
+      const chunk = ids.slice(i, i + DELETE_CHUNK);
+      const marks = chunk.map(() => '?').join(',');
+      await db.runAsync(`DELETE FROM loan_payments WHERE loan_id IN (${marks})`, chunk);
+      await db.runAsync(`DELETE FROM loans WHERE id IN (${marks})`, chunk);
+    }
+  });
+}
+
 // ------------------------------------------------------------------ backup
 
 /**
@@ -362,8 +490,8 @@ export async function importBackupRows(
   db: SQLiteDatabase,
   backup: Backup,
   now = Date.now()
-): Promise<{ expenses: number; categories: number; recurring: number }> {
-  const counts = { expenses: 0, categories: 0, recurring: 0 };
+): Promise<{ expenses: number; categories: number; recurring: number; loans: number }> {
+  const counts = { expenses: 0, categories: 0, recurring: 0, loans: 0 };
 
   await db.withTransactionAsync(async () => {
     for (const category of backup.categories) {
@@ -441,6 +569,41 @@ export async function importBackupRows(
         ]
       );
       counts.recurring += result.changes;
+    }
+
+    // A loan already on this phone (same person, direction, amount and day) is skipped, payments and
+    // all, so importing the same backup twice adds nothing.
+    const maxLoanId =
+      (await db.getFirstAsync<{ id: number }>('SELECT COALESCE(MAX(id), 0) AS id FROM loans'))?.id ?? 0;
+    for (const item of backup.loans) {
+      const person = cleanPerson(item.person);
+      const result = await db.runAsync(
+        `INSERT INTO loans (person, direction, amount_cents, note, created_at, due_at, remind)
+         SELECT ?, ?, ?, ?, ?, ?, ?
+         WHERE NOT EXISTS (
+           SELECT 1 FROM loans
+           WHERE id <= ? AND LOWER(person) = LOWER(?) AND direction = ? AND amount_cents = ? AND created_at = ?
+         )`,
+        [
+          person,
+          item.direction,
+          item.amountCents,
+          item.note,
+          item.createdAt,
+          item.dueAt,
+          item.remind ? 1 : 0,
+          maxLoanId,
+          person,
+          item.direction,
+          item.amountCents,
+          item.createdAt,
+        ]
+      );
+      if (result.changes === 0) continue;
+      counts.loans++;
+      for (const payment of item.payments) {
+        await insertPaymentRow(db, result.lastInsertRowId, payment.amountCents, payment.paidAt);
+      }
     }
   });
 
