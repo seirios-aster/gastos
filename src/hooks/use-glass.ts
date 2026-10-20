@@ -38,6 +38,10 @@ export function useGlass() {
     primary: {
       boxShadow: [drop(8, 20, `${t.accent}66`), ring, rimLight, rimDark, innerGlow],
     } as ViewStyle,
+    /** A chosen chip, segment or day: the glass tint with an accent-colored ring. */
+    selected: {
+      boxShadow: [{ ...ring, color: `${t.accent}B3` }, rimLight, rimDark],
+    } as ViewStyle,
     /** Bars and toasts that float over content: a stronger shadow. */
     float: { boxShadow: [drop(10, 26), ring, rimLight, rimDark] } as ViewStyle,
   };

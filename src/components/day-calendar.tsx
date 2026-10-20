@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { Numeric, ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Radius, Spacing, Touch } from '@/constants/theme';
+import { useGlass } from '@/hooks/use-glass';
 import { useTheme } from '@/hooks/use-theme';
 import { dayOfMonth, isPickable, monthWeeks } from '@/lib/calendar';
 import { shortDateLabel } from '@/lib/dates';
@@ -27,6 +28,7 @@ type Props = {
  */
 export function DayCalendar({ monthTs, totals, selectedDay, now, currency, onPick }: Props) {
   const theme = useTheme();
+  const glass = useGlass();
   const weeks = monthWeeks(monthTs);
   const biggest = Math.max(0, ...totals);
 
@@ -61,13 +63,13 @@ export function DayCalendar({ monthTs, totals, selectedDay, now, currency, onPic
                   onPress={() => onPick(day)}
                   style={({ pressed }) => [
                     styles.day,
-                    selected && { backgroundColor: theme.accent },
+                    selected && [{ backgroundColor: theme.primaryFill }, glass.selected],
                     pressed && styles.pressed,
                   ]}>
                   <ThemedText
                     type="smallBold"
                     style={Numeric}
-                    themeColor={selected ? 'onAccent' : pickable ? 'text' : 'textSecondary'}>
+                    themeColor={selected ? 'onPrimary' : pickable ? 'text' : 'textSecondary'}>
                     {day}
                   </ThemedText>
                   {/* A fixed slot, so a bigger dot never moves the number above it. */}
@@ -76,7 +78,7 @@ export function DayCalendar({ monthTs, totals, selectedDay, now, currency, onPic
                       style={[
                         styles.dot,
                         spent > 0 && {
-                          backgroundColor: selected ? theme.onAccent : theme.accent,
+                          backgroundColor: selected ? theme.onPrimary : theme.accent,
                           ...dotSize(spent, biggest),
                         },
                       ]}
