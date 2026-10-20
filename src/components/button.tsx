@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 
+import { LiquidLayer } from '@/components/liquid-layer';
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing, Touch } from '@/constants/theme';
 import { useGlass } from '@/hooks/use-glass';
@@ -65,6 +66,11 @@ export function Button({
         style,
         squeeze,
       ]}>
+      <LiquidLayer
+        radius={Radius.control}
+        tintFrom={primary ? theme.primaryFill : theme.backgroundElement}
+        tintTo={primary ? theme.primaryFill : theme.backgroundElement}
+      />
       <Animated.View pointerEvents="none" style={[styles.light, light]} />
       <ThemedText
         type="smallBold"
@@ -81,6 +87,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: Radius.control,
+    overflow: 'hidden',
     paddingHorizontal: Spacing.three,
   },
   disabled: { opacity: 0.4 },
