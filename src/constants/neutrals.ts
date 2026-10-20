@@ -15,10 +15,13 @@ export type Surfaces = {
   fieldBorder?: string;
 };
 
+/** Looks that use see-through surfaces over a glow. */
+export const GLASS_TONES = ['glass', 'sheet'] as const;
+
 const NO_EDGE = '#00000000';
 
 export const DARK_TONES = {
-  /** Frosted-glass look: see-through cards over a soft glow. The default. */
+  /** Frosted-glass look: see-through cards over a soft glow, on a deep navy-black. The default. */
   glass: {
     background: '#070A12',
     backgroundElement: '#FFFFFF14',
@@ -26,10 +29,16 @@ export const DARK_TONES = {
     edge: '#FFFFFF33',
     fieldBorder: '#8C93A3',
   },
-  /** Deep navy-black, with solid subtle panels. */
+  /** The same glass on a lighter slate-blue screen, with brighter panels (the add-expense sheet's colors). */
+  sheet: {
+    background: '#0A0E18',
+    backgroundElement: '#FFFFFF1C',
+    backgroundSelected: '#FFFFFF14',
+    edge: '#FFFFFF3D',
+    fieldBorder: '#8C93A3',
+  },
+  /** Deep navy-black, with solid subtle panels, no glass. */
   navy: { background: '#070A12', backgroundElement: '#141A29', backgroundSelected: '#212839', edge: NO_EDGE },
-  /** Lighter solid slate-blue panels that stand out more from the screen. */
-  slate: { background: '#0A0E18', backgroundElement: '#1C2230', backgroundSelected: '#2B3244', edge: NO_EDGE },
 } as const satisfies Record<string, Surfaces>;
 
 /** The light theme's glass look: a pale blue screen with white, see-through cards. */
@@ -40,6 +49,10 @@ export const LIGHT_GLASS: Surfaces = {
   edge: '#FFFFFFE6',
   fieldBorder: '#6B7280',
 };
+
+export function isGlass(tone: DarkToneName): boolean {
+  return (GLASS_TONES as readonly string[]).includes(tone);
+}
 
 export type DarkToneName = keyof typeof DARK_TONES;
 export const DEFAULT_DARK_TONE: DarkToneName = 'glass';
@@ -65,7 +78,7 @@ export const Neutrals = {
     backgroundElement: DARK_TONES.navy.backgroundElement,
     backgroundSelected: DARK_TONES.navy.backgroundSelected,
     textSecondary: '#B0B4BA',
-    danger: '#FF6B61',
+    danger: '#FF7A70',
     warning: '#FFC247',
     onHero: '#ffffff',
     onHeroMuted: '#F0F6FD',
@@ -76,7 +89,7 @@ export const Neutrals = {
 /** The surfaces for a theme and tone (the tone only matters for the dark theme, and for glass in light). */
 export function surfacesFor(scheme: 'light' | 'dark', tone: DarkToneName): Surfaces {
   if (scheme === 'dark') return DARK_TONES[tone];
-  if (tone === 'glass') return LIGHT_GLASS;
+  if (isGlass(tone)) return LIGHT_GLASS;
   const { background, backgroundElement, backgroundSelected } = Neutrals.light;
   return { background, backgroundElement, backgroundSelected, edge: NO_EDGE };
 }
