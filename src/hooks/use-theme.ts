@@ -4,9 +4,9 @@
  */
 
 import { Colors } from '@/constants/colors';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useThemeChoice } from '@/lib/theme-preference';
 
+/** The colors of the look the person picked: Light, Dark (both plain) or Glass. */
 export function useTheme() {
-  const scheme = useColorScheme();
-  return Colors[scheme === 'dark' ? 'dark' : 'light'];
+  return Colors[useThemeChoice()];
 }

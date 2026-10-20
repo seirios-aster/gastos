@@ -7,6 +7,7 @@ import { CategoriesSection } from '@/components/settings/categories-section';
 import { CurrencySection } from '@/components/settings/currency-section';
 import { DataSection } from '@/components/settings/data-section';
 import { Spacing } from '@/constants/theme';
+import { useIsGlass } from '@/lib/theme-preference';
 
 type Props = {
   visible: boolean;
@@ -14,6 +15,8 @@ type Props = {
 };
 
 export function SettingsSheet({ visible, onClose }: Props) {
+  // A background photo only shows through glass, so the plain look has no use for it.
+  const glass = useIsGlass();
   return (
     <Sheet visible={visible} title="Settings" onClose={onClose}>
       <KeyboardAvoidingView
@@ -24,7 +27,7 @@ export function SettingsSheet({ visible, onClose }: Props) {
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag">
           <BudgetSection />
-          <BackgroundSection />
+          {glass ? <BackgroundSection /> : null}
           <CurrencySection />
           <CategoriesSection />
           <DataSection />

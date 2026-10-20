@@ -15,6 +15,7 @@ import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
 import { useGlass } from '@/hooks/use-glass';
 import { useTheme } from '@/hooks/use-theme';
+import { useIsGlass } from '@/lib/theme-preference';
 
 type Props = {
   label: string;
@@ -64,6 +65,7 @@ function Glint() {
 export function SummaryCard({ label, amount, footer, children }: Props) {
   const theme = useTheme();
   const glass = useGlass();
+  const isGlass = useIsGlass();
   const gradient = `linear-gradient(135deg, ${theme.heroFrom}, ${theme.heroTo})`;
   // The plain color is the fallback wherever a gradient style is not available.
   const heroStyle: ViewStyle = { backgroundColor: theme.heroFrom };
@@ -73,7 +75,7 @@ export function SummaryCard({ label, amount, footer, children }: Props) {
   // The number card is glass too, and the number itself glows softly in the accent color so it
   // still stands out (in light mode the text is dark, so it needs no glow).
   const numberGlow: TextStyle | undefined =
-    theme.onHero === '#FFFFFF'
+    isGlass
       ? { textShadowColor: `${theme.accent}99`, textShadowRadius: 14, textShadowOffset: { width: 0, height: 0 } }
       : undefined;
 
@@ -85,7 +87,7 @@ export function SummaryCard({ label, amount, footer, children }: Props) {
         style={[styles.top, heroStyle, gradientStyle, glass.inset]}>
         <FrostLayer />
         <LiquidLayer radius={Radius.card} tintFrom={theme.heroFrom} tintTo={theme.heroTo} openBottom={children !== undefined} />
-        <Glint />
+        {isGlass ? <Glint /> : null}
         <ThemedText type="small" themeColor="onHeroMuted">
           {label}
         </ThemedText>

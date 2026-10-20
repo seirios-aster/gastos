@@ -5,7 +5,7 @@ import { solid } from '../../constants/accent';
 import { Colors as Palettes } from '../../constants/colors';
 
 /** The palette with see-through surfaces replaced by the colors they appear as over the screen. */
-function resolved(scheme: 'light' | 'dark') {
+function resolved(scheme: 'light' | 'dark' | 'glass') {
   const c = Palettes[scheme];
   const element = solid(c.backgroundElement, c.background);
   return {
@@ -16,7 +16,7 @@ function resolved(scheme: 'light' | 'dark') {
     heroTo: solid(c.heroTo, c.background),
   };
 }
-const Colors = { light: resolved('light'), dark: resolved('dark') };
+const Colors = { light: resolved('light'), dark: resolved('dark'), glass: resolved('glass') };
 
 /** WCAG 2.x contrast ratio between two #rrggbb colors. */
 function rgb(hex: string): [number, number, number] {
@@ -49,7 +49,7 @@ function over(color: string, backdrop: string, opacity: number): [number, number
   ];
 }
 
-for (const scheme of ['light', 'dark'] as const) {
+for (const scheme of ['light', 'dark', 'glass'] as const) {
   const c = Colors[scheme];
   const surfaces = [c.background, c.backgroundElement, c.backgroundSelected];
 
