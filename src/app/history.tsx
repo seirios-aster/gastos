@@ -9,6 +9,7 @@ import { ActionSheet } from '@/components/action-sheet';
 import { ExpenseRow } from '@/components/expense-row';
 import { ExpenseSheet } from '@/components/expense-sheet';
 import { Segmented } from '@/components/segmented';
+import { GlowBackground } from '@/components/glow-background';
 import { HeaderActions } from '@/components/header-actions';
 import { confirmDeleteExpenses, info } from '@/components/notices';
 import { SelectionBar } from '@/components/selection-bar';
@@ -342,6 +343,7 @@ export default function HistoryScreen() {
 
   return (
     <ThemedView style={styles.container}>
+      <GlowBackground />
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         <SectionList
           sections={sections}

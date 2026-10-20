@@ -18,6 +18,7 @@ import { ExpenseRow } from '@/components/expense-row';
 import { ExpenseSheet } from '@/components/expense-sheet';
 import { FieldError } from '@/components/field-error';
 import { confirmDeleteExpenses, info } from '@/components/notices';
+import { GlowBackground } from '@/components/glow-background';
 import { HeaderActions } from '@/components/header-actions';
 import { SelectionBar } from '@/components/selection-bar';
 import { SummaryCard } from '@/components/summary-card';
@@ -116,6 +117,7 @@ export default function TodayScreen() {
 
   return (
     <ThemedView style={styles.container}>
+      <GlowBackground />
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         <KeyboardAvoidingView
           style={styles.flex}

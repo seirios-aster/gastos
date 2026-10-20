@@ -2,18 +2,47 @@
  * The colors that never change with the person's accent choice: text, surfaces, warnings and the
  * text on the big number card. Plain data with no React Native imports (the tests read it too).
  */
-/** The three surfaces of the dark theme: the screen, cards and rows, and fields and selected items. */
-export type DarkTone = { background: string; backgroundElement: string; backgroundSelected: string };
+/**
+ * The surfaces of a theme: the screen, cards and rows, fields and selected items, plus the thin
+ * ring drawn round cards (transparent unless the look is glass). A color with 8 digits has an alpha:
+ * cards and fields can be see-through, so the glow behind the screen shows a little.
+ */
+export type Surfaces = {
+  background: string;
+  backgroundElement: string;
+  backgroundSelected: string;
+  edge: string;
+  fieldBorder?: string;
+};
+
+const NO_EDGE = '#00000000';
 
 export const DARK_TONES = {
-  /** Deep navy-black, with subtle panels. The default. */
-  navy: { background: '#070A12', backgroundElement: '#141A29', backgroundSelected: '#212839' },
-  /** Lighter slate-blue panels that stand out more from the screen. */
-  slate: { background: '#0A0E18', backgroundElement: '#1C2230', backgroundSelected: '#2B3244' },
-} as const satisfies Record<string, DarkTone>;
+  /** Frosted-glass look: see-through cards over a soft glow. The default. */
+  glass: {
+    background: '#070A12',
+    backgroundElement: '#FFFFFF14',
+    backgroundSelected: '#FFFFFF18',
+    edge: '#FFFFFF33',
+    fieldBorder: '#8C93A3',
+  },
+  /** Deep navy-black, with solid subtle panels. */
+  navy: { background: '#070A12', backgroundElement: '#141A29', backgroundSelected: '#212839', edge: NO_EDGE },
+  /** Lighter solid slate-blue panels that stand out more from the screen. */
+  slate: { background: '#0A0E18', backgroundElement: '#1C2230', backgroundSelected: '#2B3244', edge: NO_EDGE },
+} as const satisfies Record<string, Surfaces>;
+
+/** The light theme's glass look: a pale blue screen with white, see-through cards. */
+export const LIGHT_GLASS: Surfaces = {
+  background: '#EAF1FB',
+  backgroundElement: '#FFFFFFB8',
+  backgroundSelected: '#1E3C6E1F',
+  edge: '#FFFFFFE6',
+  fieldBorder: '#6B7280',
+};
 
 export type DarkToneName = keyof typeof DARK_TONES;
-export const DEFAULT_DARK_TONE: DarkToneName = 'navy';
+export const DEFAULT_DARK_TONE: DarkToneName = 'glass';
 
 export const Neutrals = {
   light: {
@@ -31,8 +60,10 @@ export const Neutrals = {
   },
   dark: {
     text: '#ffffff',
-    // The dark surfaces come from a tone (below): a deep navy-black by default.
-    ...DARK_TONES.navy,
+    // The surfaces (background, cards, fields) come from a tone; these are the navy ones.
+    background: DARK_TONES.navy.background,
+    backgroundElement: DARK_TONES.navy.backgroundElement,
+    backgroundSelected: DARK_TONES.navy.backgroundSelected,
     textSecondary: '#B0B4BA',
     danger: '#FF6B61',
     warning: '#FFC247',
@@ -41,3 +72,11 @@ export const Neutrals = {
     fieldBorder: '#7A7F87',
   },
 } as const;
+
+/** The surfaces for a theme and tone (the tone only matters for the dark theme, and for glass in light). */
+export function surfacesFor(scheme: 'light' | 'dark', tone: DarkToneName): Surfaces {
+  if (scheme === 'dark') return DARK_TONES[tone];
+  if (tone === 'glass') return LIGHT_GLASS;
+  const { background, backgroundElement, backgroundSelected } = Neutrals.light;
+  return { background, backgroundElement, backgroundSelected, edge: NO_EDGE };
+}
