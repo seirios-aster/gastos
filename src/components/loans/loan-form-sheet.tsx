@@ -23,6 +23,7 @@ import { useExpenses } from '@/context/expenses-context';
 import { useInputStyle } from '@/hooks/use-input-style';
 import { useNow } from '@/hooks/use-now';
 import { useSheetNotice } from '@/hooks/use-sheet-notice';
+import { useGlassRing } from '@/hooks/use-glass-ring';
 import { useTheme } from '@/hooks/use-theme';
 import { addDays, startOfDay } from '@/lib/dates';
 import { MAX_NOTE_LENGTH } from '@/lib/expenses';
@@ -93,6 +94,7 @@ const DUE_SHORTCUTS = [
 
 function LoanForm({ loan, person: startPerson, notify, onDone }: FormProps) {
   const theme = useTheme();
+  const ring = useGlassRing();
   const inputStyle = useInputStyle();
   const now = useNow();
   const { loans, currency, addLoan, updateLoan, deleteLoan } = useExpenses();
@@ -213,6 +215,8 @@ function LoanForm({ loan, person: startPerson, notify, onDone }: FormProps) {
                 style={({ pressed }) => [
                   styles.chip,
                   { backgroundColor: theme.backgroundSelected },
+                ring,
+                  ring,
                   pressed && styles.pressed,
                 ]}>
                 <ThemedText type="smallBold">{name}</ThemedText>
@@ -268,6 +272,7 @@ function LoanForm({ loan, person: startPerson, notify, onDone }: FormProps) {
               style={({ pressed }) => [
                 styles.chip,
                 { backgroundColor: theme.backgroundSelected },
+                ring,
                 pressed && styles.pressed,
               ]}>
               <ThemedText type="smallBold">In {shortcut.label}</ThemedText>

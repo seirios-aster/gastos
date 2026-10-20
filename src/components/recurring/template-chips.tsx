@@ -2,6 +2,7 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing, Touch } from '@/constants/theme';
+import { useGlassRing } from '@/hooks/use-glass-ring';
 import { useTheme } from '@/hooks/use-theme';
 import { tick } from '@/lib/haptics';
 import { RECURRING_TEMPLATES, type RecurringTemplate } from '@/lib/recurring-templates';
@@ -19,6 +20,7 @@ type Props = {
 /** One-tap starting points (Rent, Netflix, Allowance...). */
 export function TemplateChips({ onPick, layout = 'wrap', surface = 'card', bleed = 0 }: Props) {
   const theme = useTheme();
+  const ring = useGlassRing();
   const fill = surface === 'card' ? theme.backgroundSelected : theme.backgroundElement;
 
   const chips = RECURRING_TEMPLATES.map((template) => (
@@ -30,7 +32,7 @@ export function TemplateChips({ onPick, layout = 'wrap', surface = 'card', bleed
         tick();
         onPick(template);
       }}
-      style={({ pressed }) => [styles.chip, { backgroundColor: fill }, pressed && styles.pressed]}>
+      style={({ pressed }) => [styles.chip, { backgroundColor: fill }, ring, pressed && styles.pressed]}>
       <ThemedText>{template.emoji}</ThemedText>
       <ThemedText type="smallBold">{template.title}</ThemedText>
     </Pressable>

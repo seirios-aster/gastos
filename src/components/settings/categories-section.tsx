@@ -11,6 +11,7 @@ import { Radius, Spacing, Touch } from '@/constants/theme';
 import { useExpenses } from '@/context/expenses-context';
 import { useInputStyle } from '@/hooks/use-input-style';
 import { useSheetNotice } from '@/hooks/use-sheet-notice';
+import { useGlassRing } from '@/hooks/use-glass-ring';
 import { useTheme } from '@/hooks/use-theme';
 import { OTHER_CATEGORY_ID } from '@/lib/expenses';
 
@@ -18,6 +19,7 @@ const DEFAULT_EMOJI = '🏷️';
 
 export function CategoriesSection() {
   const theme = useTheme();
+  const ring = useGlassRing();
   const inputStyle = useInputStyle();
   const { categories, addCategory, deleteCategory } = useExpenses();
   const [emoji, setEmoji] = useState('');
@@ -70,7 +72,7 @@ export function CategoriesSection() {
         {categories.map((category) => (
           <View
             key={category.id}
-            style={[styles.chip, { backgroundColor: theme.backgroundElement }]}>
+            style={[styles.chip, { backgroundColor: theme.backgroundElement }, ring]}>
             <ThemedText type="small">
               {category.emoji} {category.label}
             </ThemedText>
