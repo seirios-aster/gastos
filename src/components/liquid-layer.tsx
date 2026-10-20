@@ -13,8 +13,15 @@ import {
   vec,
 } from '@shopify/react-native-skia';
 import { File } from 'expo-file-system';
-import { useRef, useState } from 'react';
-import { StyleSheet, View, useWindowDimensions } from 'react-native';
+import { useState } from 'react';
+import { StyleSheet, useWindowDimensions } from 'react-native';
+import Animated, {
+  measure,
+  useAnimatedRef,
+  useDerivedValue,
+  useFrameCallback,
+  useSharedValue,
+} from 'react-native-reanimated';
 
 import { BLOBS } from '@/components/glow-background';
 import { useTheme } from '@/hooks/use-theme';
@@ -103,8 +110,9 @@ type Props = {
 };
 
 /**
- * Fills its parent with a picture of the screen's backdrop (the colored shapes, or the person's own photo with its dim), bent at the edges like a glass
- * lens. The parent must clip to its rounded corners. Draws nothing (the parent keeps its plain
+ * Fills its parent with a picture of the screen's backdrop (the colored shapes, or the person's own
+ * photo with its dim), bent at the edges like a glass lens. The picture stays put on the screen
+ * while the card moves over it (scrolling), so the glass really looks through to the backdrop. The parent must clip to its rounded corners. Draws nothing (the parent keeps its plain
  * tint) when the switch is off, the photo cannot be read, or the shader cannot compile.
  */
 export function LiquidLayer({ radius, tintFrom, tintTo, openBottom = false }: Props) {
@@ -112,8 +120,21 @@ export function LiquidLayer({ radius, tintFrom, tintTo, openBottom = false }: Pr
   const background = useBackground();
   const photo = background.uri ? loadPhoto(background.uri, background.version) : null;
   const screen = useWindowDimensions();
-  const ref = useRef<View>(null);
-  const [box, setBox] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
+  const [size, setSize] = useState<{ w: number; h: number } | null>(null);
+
+  // Where this card is on the screen right now. It is read every frame on the UI thread, so the
+  // backdrop drawn inside stays fixed to the screen while the card scrolls over it.
+  const layer = useAnimatedRef<Animated.View>();
+  const left = useSharedValue(0);
+  const top = useSharedValue(0);
+  useFrameCallback(() => {
+    const at = measure(layer);
+    if (at) {
+      left.set(at.pageX);
+      top.set(at.pageY);
+    }
+  });
+  const toScreen = useDerivedValue(() => [{ translateX: -left.get() }, { translateY: -top.get() }]);
 
   // Chosen a photo but it could not be read: keep the plain tint.
   if (!LIQUID_GLASS || !SOURCE || (background.uri && !photo)) return null;
@@ -121,46 +142,35 @@ export function LiquidLayer({ radius, tintFrom, tintTo, openBottom = false }: Pr
   const colors = [theme.glowA, theme.glowB, theme.glowC, theme.glowD, theme.glowE];
 
   return (
-    <View
-      ref={ref}
+    <Animated.View
+      ref={layer}
       pointerEvents="none"
       style={StyleSheet.absoluteFill}
       onLayout={(event) => {
         const { width, height } = event.nativeEvent.layout;
-        ref.current?.measureInWindow((x, y) => setBox({ x, y, w: width, h: height }));
+        setSize({ w: width, h: height });
       }}>
-      {box ? (
+      {size ? (
         <Canvas style={StyleSheet.absoluteFill}>
           <Group
             layer={
               <Paint>
                 <RuntimeShader
                   source={SOURCE}
-                  uniforms={{ size: [box.w, box.h + (openBottom ? 400 : 0)], radius, band: 44, strength: 46 }}
+                  uniforms={{ size: [size.w, size.h + (openBottom ? 400 : 0)], radius, band: 44, strength: 46 }}
                 />
               </Paint>
             }>
-            <Rect x={0} y={0} width={box.w} height={box.h} color={theme.background} />
-            {photo ? (
-              <>
-                {/* The photo as it lies on the screen, seen from this card's own corner. */}
-                <SkiaImage
-                  image={photo}
-                  x={-box.x}
-                  y={-box.y}
-                  width={screen.width}
-                  height={screen.height}
-                  fit="cover"
-                />
-                <Rect x={0} y={0} width={box.w} height={box.h} color={theme.background} opacity={background.dim} />
-              </>
-            ) : (
-              <>
-            {BLOBS.map((blob, i) => {
+            <Rect x={0} y={0} width={size.w} height={size.h} color={theme.background} />
+            {/* The backdrop is drawn where it lies on the screen, then moved to sit under this card. */}
+            <Group transform={toScreen}>
+              {photo ? (
+                <SkiaImage image={photo} x={0} y={0} width={screen.width} height={screen.height} fit="cover" />
+              ) : (
+                BLOBS.map((blob, i) => {
                   const r = blob.size / 2;
-                  // Where the shape sits on the screen, seen from this card's own corner.
-                  const cx = blob.x * screen.width - box.x;
-                  const cy = blob.y * screen.height - box.y;
+                  const cx = blob.x * screen.width;
+                  const cy = blob.y * screen.height;
                   const color = colors[i % colors.length];
                   const clear = `${color.slice(0, 7)}00`;
                   return (
@@ -173,15 +183,18 @@ export function LiquidLayer({ radius, tintFrom, tintTo, openBottom = false }: Pr
                       />
                     </Circle>
                   );
-                })}
-              </>
-            )}
+                })
+              )}
+            </Group>
+            {photo ? (
+              <Rect x={0} y={0} width={size.w} height={size.h} color={theme.background} opacity={background.dim} />
+            ) : null}
           </Group>
-          <Rect x={0} y={0} width={box.w} height={box.h}>
-            <LinearGradient start={vec(0, 0)} end={vec(box.w, box.h)} colors={[tintFrom, tintTo]} />
+          <Rect x={0} y={0} width={size.w} height={size.h}>
+            <LinearGradient start={vec(0, 0)} end={vec(size.w, size.h)} colors={[tintFrom, tintTo]} />
           </Rect>
         </Canvas>
       ) : null}
-    </View>
+    </Animated.View>
   );
 }
