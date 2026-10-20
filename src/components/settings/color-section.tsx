@@ -123,11 +123,12 @@ export function ColorSection() {
       {__DEV__ ? (
         <View style={styles.mixer}>
           <ThemedText type="small" themeColor="textSecondary">
-            Dark tone (testing only)
+            Look (testing only)
           </ThemedText>
           <Segmented
-            accessibilityLabel="Dark tone"
+            accessibilityLabel="Look"
             options={[
+              { value: 'glass', label: 'Glass' },
               { value: 'navy', label: 'Navy' },
               { value: 'slate', label: 'Slate' },
             ]}

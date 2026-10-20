@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ActionSheet } from '@/components/action-sheet';
 import { Button } from '@/components/button';
+import { GlowBackground } from '@/components/glow-background';
 import { HeaderActions } from '@/components/header-actions';
 import { confirmStopRecurring, info } from '@/components/notices';
 import { TEST_SENT, addedToday, notificationsOff } from '@/components/recurring/notices';
@@ -72,6 +73,7 @@ export default function RecurringScreen() {
 
   return (
     <ThemedView style={styles.container}>
+      <GlowBackground />
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         <ScrollView contentContainerStyle={styles.content}>
           <View style={styles.header}>

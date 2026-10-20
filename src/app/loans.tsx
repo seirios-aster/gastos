@@ -3,6 +3,7 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/button';
+import { GlowBackground } from '@/components/glow-background';
 import { HeaderActions } from '@/components/header-actions';
 import { LoanFormSheet, type LoanEditor } from '@/components/loans/loan-form-sheet';
 import { LoansEmpty } from '@/components/loans/loans-empty';
@@ -53,6 +54,7 @@ export default function LoansScreen() {
 
   return (
     <ThemedView style={styles.container}>
+      <GlowBackground />
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         <ScrollView contentContainerStyle={styles.content}>
           <View style={styles.header}>

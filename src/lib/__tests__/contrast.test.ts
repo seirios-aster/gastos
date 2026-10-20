@@ -1,7 +1,16 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { Colors } from '../../constants/colors';
+import { solid } from '../../constants/accent';
+import { Colors as Palettes } from '../../constants/colors';
+
+/** The palette with see-through surfaces replaced by the colors they appear as over the screen. */
+function resolved(scheme: 'light' | 'dark') {
+  const c = Palettes[scheme];
+  const element = solid(c.backgroundElement, c.background);
+  return { ...c, backgroundElement: element, backgroundSelected: solid(c.backgroundSelected, element) };
+}
+const Colors = { light: resolved('light'), dark: resolved('dark') };
 
 /** WCAG 2.x contrast ratio between two #rrggbb colors. */
 function rgb(hex: string): [number, number, number] {

@@ -22,6 +22,11 @@ export function SummaryCard({ label, amount, footer, children }: Props) {
   const gradient = `linear-gradient(135deg, ${theme.heroFrom}, ${theme.heroTo})`;
   // The plain color is the fallback wherever a gradient style is not available.
   const heroStyle: ViewStyle = { backgroundColor: theme.heroFrom };
+  // The glass look also rings the number card, drawn inside so its size does not change.
+  const ring: ViewStyle | undefined =
+    theme.edge === '#00000000'
+      ? undefined
+      : { boxShadow: [{ offsetX: 0, offsetY: 0, blurRadius: 0, spreadDistance: 1, color: theme.edge, inset: true }] };
   const gradientStyle = (
     Platform.OS === 'web' ? { backgroundImage: gradient } : { experimental_backgroundImage: gradient }
   ) as ViewStyle;
@@ -31,7 +36,7 @@ export function SummaryCard({ label, amount, footer, children }: Props) {
       <View
         accessible
         accessibilityLabel={`${label}, ${amount}. ${footer}`}
-        style={[styles.top, heroStyle, gradientStyle]}>
+        style={[styles.top, heroStyle, gradientStyle, ring]}>
         <ThemedText type="small" themeColor="onHeroMuted">
           {label}
         </ThemedText>
