@@ -64,12 +64,12 @@ export function CategoryChips({ value, onChange, bleed = 0 }: Props) {
             }}
             style={({ pressed }) => [
               styles.chip,
-              { backgroundColor: selected ? theme.accent : theme.backgroundSelected },
-              !selected && glass.chip,
+              { backgroundColor: selected ? theme.primaryFill : theme.backgroundSelected },
+              selected ? glass.selected : glass.chip,
               pressed && styles.pressed,
             ]}>
             <ThemedText type="small">{category.emoji}</ThemedText>
-            <ThemedText type="small" themeColor={selected ? 'onAccent' : 'text'}>
+            <ThemedText type="small" themeColor={selected ? 'onPrimary' : 'text'}>
               {category.label}
             </ThemedText>
           </Pressable>

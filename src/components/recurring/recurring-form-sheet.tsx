@@ -290,11 +290,11 @@ function RecurringForm({ item, template, notify, onDone, onAdded }: FormProps) {
                   }}
                   style={({ pressed }) => [
                     styles.day,
-                    { backgroundColor: selected ? theme.accent : theme.backgroundSelected },
-                    !selected && glass.chip,
+                    { backgroundColor: selected ? theme.primaryFill : theme.backgroundSelected },
+                    selected ? glass.selected : glass.chip,
                     pressed && styles.pressed,
                   ]}>
-                  <ThemedText type="smallBold" themeColor={selected ? 'onAccent' : 'text'}>
+                  <ThemedText type="smallBold" themeColor={selected ? 'onPrimary' : 'text'}>
                     {name}
                   </ThemedText>
                 </Pressable>

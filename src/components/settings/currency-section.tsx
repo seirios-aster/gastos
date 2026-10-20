@@ -39,11 +39,11 @@ export function CurrencySection() {
               }}
               style={({ pressed }) => [
                 styles.chip,
-                { backgroundColor: selected ? theme.accent : theme.backgroundElement },
-                !selected && glass.chip,
+                { backgroundColor: selected ? theme.primaryFill : theme.backgroundElement },
+                selected ? glass.selected : glass.chip,
                 pressed && styles.pressed,
               ]}>
-              <ThemedText type="smallBold" themeColor={selected ? 'onAccent' : 'text'}>
+              <ThemedText type="smallBold" themeColor={selected ? 'onPrimary' : 'text'}>
                 {symbol || 'None'}
               </ThemedText>
             </Pressable>
