@@ -5,6 +5,7 @@
  */
 import { DEFAULT_ACCENT, deriveAccent, type AccentSet } from './accent';
 import { Neutrals, surfacesFor, type Surfaces } from './neutrals';
+import { PLAIN } from './plain';
 
 type Strings<T> = { [K in keyof T]: string };
 
@@ -19,7 +20,12 @@ export function paletteFor(scheme: 'light' | 'dark', accent: string = DEFAULT_AC
   return { ...Neutrals[scheme], ...surfacesFor(scheme), ...derived, glowA, glowB, glowC, glowD, glowE };
 }
 
-export const Colors: { light: Palette; dark: Palette } = {
-  light: paletteFor('light'),
-  dark: paletteFor('dark'),
+/**
+ * The three looks. Light and dark are the plain look in sky blue; glass is the see-through look,
+ * which only exists in dark.
+ */
+export const Colors: { light: Palette; dark: Palette; glass: Palette } = {
+  light: PLAIN.light,
+  dark: PLAIN.dark,
+  glass: paletteFor('dark'),
 };

@@ -97,10 +97,10 @@ export function blend(color: string, backdrop: string, opacity: number): string 
   return toHex([0, 1, 2].map((i) => c[i] * opacity + b[i] * (1 - opacity)) as Rgb);
 }
 
-const STEP = 0.005;
+export const STEP = 0.005;
 
 /** Walk the lightness from `start` by `step` until `ok` holds; the extreme end if it never does. */
-function search(h: number, s: number, start: number, step: number, ok: (hex: string) => boolean): string {
+export function search(h: number, s: number, start: number, step: number, ok: (hex: string) => boolean): string {
   let l = start;
   for (;;) {
     const hex = hslToHex(h, s, l);

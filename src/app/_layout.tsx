@@ -2,7 +2,6 @@ import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { SQLiteProvider } from 'expo-sqlite';
 import { StatusBar } from 'expo-status-bar';
-import { useColorScheme } from 'react-native';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import AppTabs from '@/components/app-tabs';
@@ -12,7 +11,7 @@ import { ExpensesProvider, useExpenses } from '@/context/expenses-context';
 import { Colors } from '@/constants/colors';
 import { migrate } from '@/lib/db';
 import { configureReminders } from '@/lib/reminders';
-import { applySavedTheme } from '@/lib/theme-preference';
+import { applySavedTheme, useThemeChoice } from '@/lib/theme-preference';
 
 SplashScreen.preventAutoHideAsync();
 applySavedTheme();
@@ -20,9 +19,9 @@ void configureReminders();
 
 // The navigation themes paint a gray behind every screen (rgb(242,242,242) light, rgb(1,1,1) dark).
 // Use the app's own background so nothing gray shows while the theme changes or a tab switches.
-function navTheme(scheme: 'light' | 'dark') {
-  const colors = Colors[scheme];
-  const base = scheme === 'dark' ? DarkTheme : DefaultTheme;
+function navTheme(choice: 'light' | 'dark' | 'glass') {
+  const colors = Colors[choice];
+  const base = choice === 'light' ? DefaultTheme : DarkTheme;
   return {
     ...base,
     colors: { ...base.colors, background: colors.background, card: colors.background, primary: colors.accent },
@@ -36,9 +35,9 @@ function ReadyGate({ children }: { children: React.ReactNode }) {
 }
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
+  const choice = useThemeChoice();
   return (
-    <ThemeProvider value={navTheme(colorScheme === 'dark' ? 'dark' : 'light')}>
+    <ThemeProvider value={navTheme(choice)}>
       <SQLiteProvider databaseName="gastos.db" onInit={migrate}>
         <ExpensesProvider>
           <AnimatedSplashOverlay />

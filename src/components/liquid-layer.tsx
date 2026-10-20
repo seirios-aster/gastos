@@ -28,6 +28,7 @@ import Animated, {
 import { BLOBS, driftAmount, type Blob } from '@/components/glow-background';
 import { useTheme } from '@/hooks/use-theme';
 import { useBackground } from '@/lib/background-preference';
+import { useIsGlass } from '@/lib/theme-preference';
 
 /**
  * Set to false to go back to the plain tinted card. The liquid look is drawn by the graphics
@@ -148,6 +149,7 @@ type Props = {
 export function LiquidLayer({ radius, tintFrom, tintTo, openBottom = false }: Props) {
   const theme = useTheme();
   const background = useBackground();
+  const glass = useIsGlass();
   const photo = background.uri ? loadPhoto(background.uri, background.version) : null;
   const screen = useWindowDimensions();
   const [size, setSize] = useState<{ w: number; h: number } | null>(null);
@@ -171,7 +173,7 @@ export function LiquidLayer({ radius, tintFrom, tintTo, openBottom = false }: Pr
   const toScreen = useDerivedValue(() => [{ translateX: -left.get() }, { translateY: -top.get() }]);
 
   // Chosen a photo but it could not be read: keep the plain tint.
-  if (!LIQUID_GLASS || !SOURCE || (background.uri && !photo)) return null;
+  if (!LIQUID_GLASS || !glass || !SOURCE || (background.uri && !photo)) return null;
 
   const colors = [theme.glowA, theme.glowB, theme.glowC, theme.glowD, theme.glowE];
 

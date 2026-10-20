@@ -4,6 +4,7 @@ import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { Backdrop } from '@/components/backdrop';
 import { useTheme } from '@/hooks/use-theme';
+import { useIsGlass } from '@/lib/theme-preference';
 
 /**
  * The view that a frosted panel blurs. On Android a blur needs to be told which view sits behind
@@ -20,6 +21,10 @@ type Props = { style?: StyleProp<ViewStyle>; children: React.ReactNode };
 export function GlassScreen({ style, children }: Props) {
   const theme = useTheme();
   const target = useRef<View | null>(null);
+  const glass = useIsGlass();
+
+  // The plain look is a flat screen: no shapes behind it, nothing to see through to.
+  if (!glass) return <View style={[{ backgroundColor: theme.background }, style]}>{children}</View>;
 
   return (
     <BlurTargetContext.Provider value={target}>
