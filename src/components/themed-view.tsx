@@ -1,7 +1,8 @@
-import { View, type ViewProps } from 'react-native';
+import { StyleSheet, View, type ViewProps } from 'react-native';
 
 import { FrostLayer } from '@/components/frost-layer';
-import { ThemeColor } from '@/constants/theme';
+import { LiquidLayer } from '@/components/liquid-layer';
+import { Radius, ThemeColor } from '@/constants/theme';
 import { useGlass } from '@/hooks/use-glass';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -24,6 +25,7 @@ export function ThemedView({
 }: ThemedViewProps) {
   const theme = useTheme();
   const glass = useGlass();
+  const radius = (StyleSheet.flatten(style)?.borderRadius as number | undefined) ?? Radius.card;
 
   // Cards are glass: a see-through tint with a ring, a rim light, an inner glow and a soft shadow
   // under them. All of it is drawn inside or outside the view, so nothing moves or resizes.
@@ -37,6 +39,7 @@ export function ThemedView({
       ]}
       {...otherProps}>
       {blur ? <FrostLayer /> : null}
+      {blur ? <LiquidLayer radius={radius} tintFrom={theme.backgroundElement} tintTo={theme.backgroundElement} /> : null}
       {children}
     </View>
   );
