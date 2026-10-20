@@ -22,7 +22,7 @@ export function RecurringEmpty({ onAdd }: { onAdd: (template?: RecurringTemplate
   const theme = useTheme();
 
   return (
-    <ThemedView type="backgroundElement" style={styles.card}>
+    <ThemedView type="backgroundElement" blur style={styles.card}>
       <ThemedText style={styles.hero} accessibilityElementsHidden importantForAccessibility="no">
         🔁
       </ThemedText>

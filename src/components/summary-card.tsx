@@ -1,5 +1,6 @@
 import { Platform, StyleSheet, View, type TextStyle, type ViewStyle } from 'react-native';
 
+import { FrostLayer } from '@/components/frost-layer';
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
 import { useGlass } from '@/hooks/use-glass';
@@ -40,6 +41,7 @@ export function SummaryCard({ label, amount, footer, children }: Props) {
         accessible
         accessibilityLabel={`${label}, ${amount}. ${footer}`}
         style={[styles.top, heroStyle, gradientStyle, glass.inset]}>
+        <FrostLayer />
         <ThemedText type="small" themeColor="onHeroMuted">
           {label}
         </ThemedText>

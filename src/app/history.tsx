@@ -9,7 +9,7 @@ import { ActionSheet } from '@/components/action-sheet';
 import { ExpenseRow } from '@/components/expense-row';
 import { ExpenseSheet } from '@/components/expense-sheet';
 import { Segmented } from '@/components/segmented';
-import { GlowBackground } from '@/components/glow-background';
+import { GlassScreen } from '@/components/glass-screen';
 import { HeaderActions } from '@/components/header-actions';
 import { confirmDeleteExpenses, info } from '@/components/notices';
 import { SelectionBar } from '@/components/selection-bar';
@@ -216,7 +216,7 @@ export default function HistoryScreen() {
 
           {/* Nothing to chart before the very first expense; a month with none still shows it. */}
           {expenses.length > 0 && (
-          <ThemedView type="backgroundElement" style={styles.card}>
+          <ThemedView type="backgroundElement" blur style={styles.card}>
             <View style={styles.cardTop}>
               <ThemedText type="smallBold">Spending</ThemedText>
               <View style={styles.toggle}>
@@ -251,7 +251,7 @@ export default function HistoryScreen() {
           )}
 
           {breakdown.length > 0 && (
-            <ThemedView type="backgroundElement" style={styles.card}>
+            <ThemedView type="backgroundElement" blur style={styles.card}>
               <ThemedText type="smallBold">By category</ThemedText>
               {breakdown.map(({ category, totalCents, share }) => {
                 const selected = category.id === activeFilter;
@@ -301,7 +301,7 @@ export default function HistoryScreen() {
           />
 
           {day !== null && dayBreakdown.length > 0 && (
-            <ThemedView type="backgroundElement" style={styles.card}>
+            <ThemedView type="backgroundElement" blur style={styles.card}>
               <View style={styles.cardTop}>
                 <ThemedText type="smallBold">{dayLabel(dayOfMonth(monthTs, day), now)}</ThemedText>
                 <ThemedText type="smallBold" style={Numeric}>
@@ -342,8 +342,7 @@ export default function HistoryScreen() {
   }
 
   return (
-    <ThemedView style={styles.container}>
-      <GlowBackground />
+    <GlassScreen style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         <SectionList
           sections={sections}
@@ -407,7 +406,7 @@ export default function HistoryScreen() {
 
       <ExpenseSheet expense={editing} onClose={() => setEditing(null)} />
       <ActionSheet {...sheetProps} />
-    </ThemedView>
+    </GlassScreen>
   );
 }
 

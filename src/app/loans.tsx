@@ -3,7 +3,7 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/button';
-import { GlowBackground } from '@/components/glow-background';
+import { GlassScreen } from '@/components/glass-screen';
 import { HeaderActions } from '@/components/header-actions';
 import { LoanFormSheet, type LoanEditor } from '@/components/loans/loan-form-sheet';
 import { LoansEmpty } from '@/components/loans/loans-empty';
@@ -12,7 +12,6 @@ import { PersonSheet } from '@/components/loans/person-sheet';
 import { Segmented } from '@/components/segmented';
 import { SummaryCard } from '@/components/summary-card';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useExpenses } from '@/context/expenses-context';
 import { useNow } from '@/hooks/use-now';
@@ -53,8 +52,7 @@ export default function LoansScreen() {
         : 'Nothing open right now';
 
   return (
-    <ThemedView style={styles.container}>
-      <GlowBackground />
+    <GlassScreen style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         <ScrollView contentContainerStyle={styles.content}>
           <View style={styles.header}>
@@ -120,7 +118,7 @@ export default function LoansScreen() {
         onAddLoan={addLoanFor}
       />
       <LoanFormSheet editor={editor} onClose={() => setEditor(null)} />
-    </ThemedView>
+    </GlassScreen>
   );
 }
 

@@ -25,13 +25,14 @@ type Blob = {
   seconds: number;
 };
 
-// Five pools of color, placed to be seen around the edges and behind the top of every screen.
+// Five soft-edged shapes of color. They are what frosted panels blur, so they need a defined
+// edge (a flat glow would blur into nothing). They sit around and behind where cards are.
 const BLOBS: Blob[] = [
-  { x: 0.1, y: 0.06, size: 440, dx: 40, dy: 30, seconds: 14 },
-  { x: 0.98, y: 0.34, size: 400, dx: -36, dy: 40, seconds: 17 },
-  { x: 0.08, y: 0.72, size: 420, dx: 30, dy: -34, seconds: 19 },
-  { x: 0.86, y: 0.95, size: 380, dx: -30, dy: -26, seconds: 16 },
-  { x: 0.5, y: 0.5, size: 340, dx: 44, dy: 36, seconds: 22 },
+  { x: 0.12, y: 0.09, size: 300, dx: 36, dy: 28, seconds: 14 },
+  { x: 0.92, y: 0.3, size: 280, dx: -32, dy: 36, seconds: 17 },
+  { x: 0.1, y: 0.62, size: 300, dx: 30, dy: -30, seconds: 19 },
+  { x: 0.9, y: 0.86, size: 270, dx: -28, dy: -24, seconds: 16 },
+  { x: 0.55, y: 0.46, size: 220, dx: 40, dy: 32, seconds: 22 },
 ];
 
 function GlowBlob({ blob, color, still }: { blob: Blob; color: string; still: boolean }) {
@@ -56,7 +57,8 @@ function GlowBlob({ blob, color, still }: { blob: Blob; color: string; still: bo
 
   const radius = blob.size / 2;
   // Two sizes on purpose: React Native reads a gradient with one size and a position wrongly.
-  const image = `radial-gradient(ellipse ${radius}px ${radius}px at 50% 50%, ${color}, ${faded(color)})`;
+  // Solid in the middle with a short soft edge, so the shape has an outline to blur.
+  const image = `radial-gradient(ellipse ${radius}px ${radius}px at 50% 50%, ${color} 0%, ${color} 64%, ${faded(color)} 74%)`;
   return (
     <Animated.View
       pointerEvents="none"
@@ -78,7 +80,7 @@ function GlowBlob({ blob, color, still }: { blob: Blob; color: string; still: bo
 }
 
 /**
- * The soft color glow behind every screen: five slowly drifting pools of color. Put it first
+ * The soft color glow behind every screen: five slowly drifting shapes of color. Put it first
  * inside a screen so everything else lies on top. It stands still when the phone asks apps to
  * reduce motion.
  */

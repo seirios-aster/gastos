@@ -100,7 +100,7 @@ function Balance({ group, currency }: { group: PersonGroup; currency: string }) 
       ? `${group.person} owes you`
       : `You owe ${group.person}`;
   return (
-    <ThemedView type="backgroundElement" style={styles.balance}>
+    <ThemedView type="backgroundElement" blur style={styles.balance}>
       <ThemedText type="small" themeColor="textSecondary">
         {text}
       </ThemedText>
@@ -182,7 +182,7 @@ function LoanCard({ loan, now, currency, onEdit, notify }: CardProps) {
   }
 
   return (
-    <ThemedView type="backgroundElement" style={styles.card}>
+    <ThemedView type="backgroundElement" blur style={styles.card}>
       <View style={styles.cardTop}>
         <View style={styles.flex}>
           <ThemedText type="smallBold" themeColor="textSecondary">

@@ -18,7 +18,7 @@ import { ExpenseRow } from '@/components/expense-row';
 import { ExpenseSheet } from '@/components/expense-sheet';
 import { FieldError } from '@/components/field-error';
 import { confirmDeleteExpenses, info } from '@/components/notices';
-import { GlowBackground } from '@/components/glow-background';
+import { GlassScreen } from '@/components/glass-screen';
 import { HeaderActions } from '@/components/header-actions';
 import { SelectionBar } from '@/components/selection-bar';
 import { SummaryCard } from '@/components/summary-card';
@@ -116,8 +116,7 @@ export default function TodayScreen() {
   }
 
   return (
-    <ThemedView style={styles.container}>
-      <GlowBackground />
+    <GlassScreen style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         <KeyboardAvoidingView
           style={styles.flex}
@@ -150,7 +149,7 @@ export default function TodayScreen() {
               />
             </SummaryCard>
 
-            <ThemedView type="backgroundElement" style={styles.addCard}>
+            <ThemedView type="backgroundElement" blur style={styles.addCard}>
               <View style={styles.amountRow}>
                 {currency ? <ThemedText style={styles.amountSymbol}>{currency}</ThemedText> : null}
                 <TextInput
@@ -227,7 +226,7 @@ export default function TodayScreen() {
 
       <ExpenseSheet expense={editing} onClose={() => setEditing(null)} />
       <ActionSheet {...sheetProps} />
-    </ThemedView>
+    </GlassScreen>
   );
 }
 
