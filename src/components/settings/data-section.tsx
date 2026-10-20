@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
-import { Share, StyleSheet, TextInput, View } from 'react-native';
+import { Share, StyleSheet, View } from 'react-native';
 
+import { FocusInput } from '@/components/focus-input';
 import { ActionSheet } from '@/components/action-sheet';
 import { Button } from '@/components/button';
 import { FieldError } from '@/components/field-error';
@@ -161,7 +162,7 @@ export function DataSection() {
               Paste the text of a backup made with “Export backup”. Restoring only adds what is
               missing on this phone; it never deletes or changes what you already have.
             </ThemedText>
-            <TextInput
+            <FocusInput
               style={[inputStyle, styles.backupInput]}
               value={backupText}
               onChangeText={(text) => {

@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
+import { FocusInput } from '@/components/focus-input';
 import { Section } from '@/components/settings/section';
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing, Touch } from '@/constants/theme';
@@ -50,7 +51,7 @@ export function CurrencySection() {
           );
         })}
       </View>
-      <TextInput
+      <FocusInput
         style={inputStyle}
         value={isPreset ? custom : currency}
         onChangeText={(text) => {

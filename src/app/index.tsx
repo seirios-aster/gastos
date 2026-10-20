@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { FocusInput, useFocusStyle } from '@/components/focus-input';
 import { BudgetProgress } from '@/components/budget-progress';
 import { Button } from '@/components/button';
 import { ActionSheet } from '@/components/action-sheet';
@@ -45,6 +46,8 @@ import { formatMoney, parseAmountToCents } from '@/lib/money';
 export default function TodayScreen() {
   const theme = useTheme();
   const inputStyle = useInputStyle();
+  const [amountFocused, setAmountFocused] = useState(false);
+  const amountFocus = useFocusStyle(amountFocused);
   const now = useNow();
   const {
     expenses,
@@ -153,7 +156,7 @@ export default function TodayScreen() {
 
             <ThemedView type="backgroundElement" blur style={styles.addCard}>
               {/* The whole amount row is a field (a recessed well), so it reads as somewhere to type. */}
-              <View style={[styles.amountRow, inputStyle, styles.amountField]}>
+              <View style={[styles.amountRow, inputStyle, styles.amountField, amountFocus]}>
                 {currency ? <ThemedText style={styles.amountSymbol}>{currency}</ThemedText> : null}
                 <TextInput
                   style={[
@@ -170,10 +173,12 @@ export default function TodayScreen() {
                   placeholder="0.00"
                   placeholderTextColor={theme.textSecondary}
                   accessibilityLabel="Amount"
+                  onFocus={() => setAmountFocused(true)}
+                  onBlur={() => setAmountFocused(false)}
                 />
               </View>
               {invalid && <FieldError>Enter an amount greater than 0</FieldError>}
-              <TextInput
+              <FocusInput
                 style={[inputStyle, styles.noteInput]}
                 value={title}
                 onChangeText={setTitle}

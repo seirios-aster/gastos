@@ -5,10 +5,10 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  TextInput,
   View,
 } from 'react-native';
 
+import { FocusInput } from '@/components/focus-input';
 import { ActionSheet } from '@/components/action-sheet';
 import { Button } from '@/components/button';
 import { CategoryChips } from '@/components/category-chips';
@@ -115,7 +115,7 @@ function EditForm({ expense, onClose }: { expense: Expense; onClose: () => void 
             </ThemedText>
             <View style={styles.amountRow}>
               {currency ? <ThemedText style={styles.currency}>{currency}</ThemedText> : null}
-              <TextInput
+              <FocusInput
                 style={[inputStyle, styles.amountInput]}
                 value={amount}
                 onChangeText={(text) => {
@@ -135,7 +135,7 @@ function EditForm({ expense, onClose }: { expense: Expense; onClose: () => void 
             <ThemedText type="small" themeColor="textSecondary">
               Note
             </ThemedText>
-            <TextInput
+            <FocusInput
               style={inputStyle}
               value={title}
               onChangeText={setTitle}

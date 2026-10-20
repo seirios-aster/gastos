@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
-import { Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
+import { FocusInput } from '@/components/focus-input';
 import { ActionSheet } from '@/components/action-sheet';
 import { Button } from '@/components/button';
 import { FieldError } from '@/components/field-error';
@@ -93,7 +94,7 @@ export function CategoriesSection() {
       </View>
 
       <View style={styles.addRow}>
-        <TextInput
+        <FocusInput
           style={[inputStyle, styles.emojiInput]}
           value={emoji}
           onChangeText={setEmoji}
@@ -102,7 +103,7 @@ export function CategoriesSection() {
           placeholderTextColor={theme.textSecondary}
           accessibilityLabel="Category emoji"
         />
-        <TextInput
+        <FocusInput
           style={[inputStyle, styles.nameInput]}
           value={name}
           onChangeText={(text) => {

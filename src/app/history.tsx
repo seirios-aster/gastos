@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
-import { Pressable, SectionList, StyleSheet, TextInput, View } from 'react-native';
+import { Pressable, SectionList, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { FocusInput } from '@/components/focus-input';
 import { BarChart, type Bar } from '@/components/bar-chart';
 import { BudgetProgress } from '@/components/budget-progress';
 import { DayCalendar } from '@/components/day-calendar';
@@ -155,7 +156,7 @@ export default function HistoryScreen() {
       </View>
 
       <View style={styles.searchRow}>
-        <TextInput
+        <FocusInput
           style={[inputStyle, styles.search]}
           value={query}
           onChangeText={setQuery}

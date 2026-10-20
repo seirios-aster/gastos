@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { TextInput } from 'react-native';
+import {  } from 'react-native';
 
+import { FocusInput } from '@/components/focus-input';
 import { Section } from '@/components/settings/section';
 import { useExpenses } from '@/context/expenses-context';
 import { useInputStyle } from '@/hooks/use-input-style';
@@ -17,7 +18,7 @@ export function BudgetSection() {
     <Section
       title="Monthly budget"
       hint="A monthly limit, shown on Today and History. Leave empty for none.">
-      <TextInput
+      <FocusInput
         style={inputStyle}
         value={text}
         onChangeText={(next) => {

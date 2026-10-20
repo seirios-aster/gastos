@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, Share, StyleSheet, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, Share, StyleSheet, View } from 'react-native';
 
+import { FocusInput } from '@/components/focus-input';
 import { ActionSheet } from '@/components/action-sheet';
 import { Button } from '@/components/button';
 import { FieldError } from '@/components/field-error';
@@ -237,7 +238,7 @@ function LoanCard({ loan, now, currency, onEdit, notify }: CardProps) {
 
       {!settled && (
         <View style={styles.pay}>
-          <TextInput
+          <FocusInput
             style={[inputStyle, styles.payInput]}
             value={amount}
             onChangeText={(text) => {
