@@ -76,7 +76,14 @@ export function BudgetProgress({
       accessibilityRole="progressbar"
       accessibilityValue={{ min: 0, max: 100, now: Math.round(status.ratio * 100) }}
       accessibilityLabel={`Budget: spent ${spentOf}. ${message}`}
-      style={[styles.strip, { backgroundColor: theme.backgroundElement }]}>
+      style={[
+        styles.strip,
+        { backgroundColor: theme.backgroundElement },
+        // On the glass look a faint line along the top separates the strip from the number above.
+        theme.edge !== '#00000000' && {
+          boxShadow: [{ offsetX: 0, offsetY: 1, blurRadius: 0, color: theme.edge, inset: true }],
+        },
+      ]}>
       {/* Wraps, so on a narrow screen the amounts drop to their own line instead of squeezing the title. */}
       <View style={styles.top}>
         <ThemedText type="smallBold" style={styles.title}>

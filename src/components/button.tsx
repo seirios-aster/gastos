@@ -43,6 +43,11 @@ export function Button({
       style={({ pressed }) => [
         styles.button,
         { backgroundColor: primary ? theme.accent : theme.backgroundElement },
+        // On the glass look the quieter buttons get the same thin ring as cards.
+        !primary &&
+          theme.edge !== '#00000000' && {
+            boxShadow: [{ offsetX: 0, offsetY: 0, blurRadius: 0, spreadDistance: 1, color: theme.edge, inset: true }],
+          },
         disabled && styles.disabled,
         pressed && styles.pressed,
         style,
