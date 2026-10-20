@@ -60,7 +60,11 @@ export function ActionSheet({ visible, title, message, actions, cancelLabel = 'C
         />
         <ThemedView
           type="backgroundElement"
-          style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, Spacing.three) + Spacing.two }]}>
+          // Almost solid: it sits over the dimmed screen, and text showing through would be hard to read.
+          style={[
+            styles.sheet,
+            { backgroundColor: theme.toast, paddingBottom: Math.max(insets.bottom, Spacing.three) + Spacing.two },
+          ]}>
           <ThemedText type="heading" accessibilityRole="header">
             {title}
           </ThemedText>

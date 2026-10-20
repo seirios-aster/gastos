@@ -79,10 +79,8 @@ export function BudgetProgress({
       style={[
         styles.strip,
         { backgroundColor: theme.backgroundElement },
-        // On the glass look a faint line along the top separates the strip from the number above.
-        theme.edge !== '#00000000' && {
-          boxShadow: [{ offsetX: 0, offsetY: 1, blurRadius: 0, color: theme.edge, inset: true }],
-        },
+        // A faint line along the top separates the strip from the number above it.
+        { boxShadow: [{ offsetX: 0, offsetY: 1, blurRadius: 0, color: theme.edge, inset: true }] },
       ]}>
       {/* Wraps, so on a narrow screen the amounts drop to their own line instead of squeezing the title. */}
       <View style={styles.top}>

@@ -1,6 +1,6 @@
-import { DEFAULT_DARK_TONE, Neutrals, isGlass, surfacesFor, type DarkToneName } from './neutrals';
+import { Neutrals, surfacesFor } from './neutrals';
 
-/** The main color people start with. Sky blue; the app derives a readable shade for each theme from it. */
+/** The app's main color: sky blue. A readable shade for each theme is derived from it. */
 export const DEFAULT_ACCENT = '#6FB6FF';
 
 /** Everything in the theme that follows the accent. */
@@ -10,21 +10,19 @@ export type AccentSet = {
   onAccent: string;
   /** The accent at 12% (light) or 24% (dark) over the screen: the selected-tab pill, a selected row. */
   accentSoft: string;
-  /** The big number card is a gradient between these, the same in both themes. */
+  /** The big number card: the accent as a see-through tint (#rrggbbaa) fading from heroFrom to heroTo. */
   heroFrom: string;
   heroTo: string;
-  /** Text on the number card (it differs when the card is glass, and in light mode is dark). */
+  /** Text on the number card: white in dark mode, dark navy in light mode. */
   onHero: string;
   onHeroMuted: string;
-  /** The main action button's fill and its text: solid accent normally, a stronger tint on glass. */
+  /** The main action button: a stronger see-through tint of the accent, and its text. */
   primaryFill: string;
   onPrimary: string;
   /** The accent at 12% (light) or 24% (dark) alpha, as #rrggbbaa: the press ripple on a tab. */
   ripple: string;
-  /** Soft color glows drawn behind a glass screen (#rrggbbaa); fully transparent for the solid looks. */
-  glowA: string;
-  glowB: string;
-  glowC: string;
+  /** Soft color glows drawn behind every screen (#rrggbbaa). */
+  glows: [string, string, string, string, string];
 };
 
 export type AccentColors = { light: AccentSet; dark: AccentSet };
@@ -110,17 +108,19 @@ function search(h: number, s: number, start: number, step: number, ok: (hex: str
 }
 
 /**
- * Turn the one color a person picked into a full set for each theme that stays readable. The hue
- * and vividness are kept. Dark mode keeps the color as it is (lightened only if it is too dark to
- * read on black); light mode darkens it until white text sits on it comfortably, because a pale
- * color cannot carry white text. The same rules the contrast tests check are applied here.
+ * Turn one accent color into everything in the theme that follows it, for light and dark, so text
+ * stays readable. The hue and vividness are kept. Dark mode keeps the color as it is (lightened
+ * only if it is too dark to read on the screen); light mode darkens it until white text sits on it,
+ * because a pale color cannot carry white text. The glow colors, the number card and the main
+ * button are see-through tints, each dimmed or lightened until its text reads at 4.5:1 even over
+ * the brightest part of the glow. The contrast tests check the same rules.
  */
-export function deriveAccent(base: string, tone: DarkToneName = DEFAULT_DARK_TONE): AccentColors {
+export function deriveAccent(base: string): AccentColors {
   const [h, s, l] = hexToHsl(isHex(base) ? base : DEFAULT_ACCENT);
   // A fully vivid colour turned darker looks harsh, so the darker shades ease off a little.
   const sDeep = Math.min(s, 0.65);
-  const lightS = surfacesFor('light', tone);
-  const darkS = surfacesFor('dark', tone);
+  const lightS = surfacesFor('light');
+  const darkS = surfacesFor('dark');
   // Surfaces can be see-through, so check against what they look like over the screen and each other.
   const resolve = (surfaces: typeof lightS) => {
     const element = solid(surfaces.backgroundElement, surfaces.background);
@@ -155,50 +155,36 @@ export function deriveAccent(base: string, tone: DarkToneName = DEFAULT_DARK_TON
     );
   });
 
-  // The card text is white and a pale off-white; both must read on both ends of the gradient.
-  const readsOnHero = (hex: string) =>
-    contrastRatio(light.onHero, hex) >= 4.5 && contrastRatio(light.onHeroMuted, hex) >= 4.5;
-  const heroFrom = search(h, sDeep, hexToHsl(lightAccent)[2], -STEP, readsOnHero);
-  const heroTo = search(h, sDeep, Math.max(hexToHsl(heroFrom)[2] - 0.1, 0.1), -STEP, readsOnHero);
-
-  const glass = isGlass(tone);
-  const none = '#00000000';
   /**
-   * The three glow colors: the accent's own hue and two neighbours on the colour wheel. Each is
+   * The five glow colors: the accent's own hue and four neighbours on the colour wheel. Each is
    * dimmed (dark) or lightened (light) until secondary text still reads on it at full strength,
    * with a card and a field laid over it.
    */
+  const GLOW_HUES = [0, 55, -70, 130, 25];
   const glows = (
     start: number,
     step: number,
-    alpha: [string, string, string],
+    alpha: string[],
     surfaces: typeof lightS,
     textSecondary: string
   ) =>
-    [h, h + 55, h - 70].map((hue, i) => {
-      const hex = search(
-        (hue + 360) % 360,
-        Math.min(s, 0.85),
-        start,
-        step,
-        (candidate) => {
-          const screen = solid(`${candidate}${alpha[i]}`, surfaces.background);
-          const card = solid(surfaces.backgroundElement, screen);
-          const field = solid(surfaces.backgroundSelected, card);
-          return [screen, card, field].every((surface) => contrastRatio(textSecondary, surface) >= 4.6);
-        }
-      );
+    GLOW_HUES.map((shift, i) => {
+      const hex = search((h + shift + 360) % 360, Math.min(s, 0.85), start, step, (candidate) => {
+        const screen = solid(`${candidate}${alpha[i]}`, surfaces.background);
+        const card = solid(surfaces.backgroundElement, screen);
+        const field = solid(surfaces.backgroundSelected, card);
+        return [screen, card, field].every((surface) => contrastRatio(textSecondary, surface) >= 4.6);
+      });
       return `${hex}${alpha[i]}`;
-    });
-  const none3 = [none, none, none];
-  const darkGlows = glass ? glows(0.45, -STEP, ['38', '2B', '22'], darkS, dark.textSecondary) : none3;
-  const lightGlows = glass ? glows(0.8, STEP, ['80', '66', '50'], lightS, light.textSecondary) : none3;
+    }) as AccentSet['glows'];
+  const darkGlows = glows(0.45, -STEP, ['3D', '33', '2B', '29', '24'], darkS, dark.textSecondary);
+  const lightGlows = glows(0.8, STEP, ['85', '70', '5C', '59', '4D'], lightS, light.textSecondary);
 
   /**
-   * The glass number card: the accent's hue as a see-through tint, kept just strong enough to feel
-   * like a card and dark (or pale) enough that its text reads even over the brightest glow.
+   * A see-through tint of the accent for the number card and the main button, kept just strong
+   * enough to feel like glass and dark (or pale) enough that `text` reads on it over every glow.
    */
-  const glassHero = (
+  const tint = (
     surfaces: typeof lightS,
     glowColors: string[],
     text: [string, string],
@@ -214,55 +200,40 @@ export function deriveAccent(base: string, tone: DarkToneName = DEFAULT_DARK_TON
           return contrastRatio(text[0], card) >= 4.5 && contrastRatio(text[1], card) >= 4.5;
         })
       );
-    const tint = search(h, Math.min(s, 0.8), start, step, reads);
-    return { heroFrom: `${tint}${alphas[0]}`, heroTo: `${tint}${alphas[1]}` };
+    const color = search(h, Math.min(s, 0.8), start, step, reads);
+    return [`${color}${alphas[0]}`, `${color}${alphas[1]}`] as const;
   };
-  const solidHero = { heroFrom, heroTo };
-  const darkHero = glass
-    ? glassHero(darkS, darkGlows, ['#FFFFFF', '#E4ECF8'], ['80', '52'], 0.5, -STEP)
-    : solidHero;
-  const lightHero = glass
-    ? glassHero(lightS, lightGlows, ['#0B1B33', '#33415C'], ['3D', '24'], 0.5, STEP)
-    : solidHero;
-  const darkPrimary = glass
-    ? glassHero(darkS, darkGlows, ['#FFFFFF', '#FFFFFF'], ['B3', 'B3'], 0.5, -STEP).heroFrom
-    : null;
-  const lightPrimary = glass
-    ? glassHero(lightS, lightGlows, ['#0B1B33', '#0B1B33'], ['B3', 'B3'], 0.55, STEP).heroFrom
-    : null;
-  const heroText = (scheme: 'light' | 'dark') =>
-    glass
-      ? scheme === 'dark'
-        ? { onHero: '#FFFFFF', onHeroMuted: '#E4ECF8' }
-        : { onHero: '#0B1B33', onHeroMuted: '#33415C' }
-      : { onHero: Neutrals[scheme].onHero, onHeroMuted: Neutrals[scheme].onHeroMuted };
-
-  const set = (
-    accent: string,
-    onAccent: string,
-    mix: number,
-    alpha: string,
-    bg: string,
-    [glowA, glowB, glowC]: string[],
-    hero: { heroFrom: string; heroTo: string },
-    text: { onHero: string; onHeroMuted: string },
-    primary: string | null
-  ): AccentSet => ({
-    accent,
-    onAccent,
-    accentSoft: blend(accent, bg, mix),
-    ...hero,
-    ...text,
-    primaryFill: primary ?? accent,
-    onPrimary: primary === null ? onAccent : text.onHero,
-    ripple: `${accent}${alpha}`,
-    glowA,
-    glowB,
-    glowC,
-  });
+  const DARK_TEXT = { onHero: '#FFFFFF', onHeroMuted: '#E4ECF8' };
+  const LIGHT_TEXT = { onHero: '#0B1B33', onHeroMuted: '#33415C' };
+  const [darkHeroFrom, darkHeroTo] = tint(darkS, darkGlows, ['#FFFFFF', '#E4ECF8'], ['80', '52'], 0.5, -STEP);
+  const [lightHeroFrom, lightHeroTo] = tint(lightS, lightGlows, ['#0B1B33', '#33415C'], ['3D', '24'], 0.5, STEP);
+  const [darkPrimary] = tint(darkS, darkGlows, ['#FFFFFF', '#FFFFFF'], ['B3', 'B3'], 0.5, -STEP);
+  const [lightPrimary] = tint(lightS, lightGlows, ['#0B1B33', '#0B1B33'], ['B3', 'B3'], 0.55, STEP);
 
   return {
-    light: set(lightAccent, '#ffffff', 0.12, '1F', light.background, lightGlows, lightHero, heroText('light'), lightPrimary),
-    dark: set(darkAccent, '#000000', 0.24, '3D', dark.background, darkGlows, darkHero, heroText('dark'), darkPrimary),
+    light: {
+      accent: lightAccent,
+      onAccent: '#ffffff',
+      accentSoft: blend(lightAccent, light.background, 0.12),
+      heroFrom: lightHeroFrom,
+      heroTo: lightHeroTo,
+      ...LIGHT_TEXT,
+      primaryFill: lightPrimary,
+      onPrimary: LIGHT_TEXT.onHero,
+      ripple: `${lightAccent}1F`,
+      glows: lightGlows,
+    },
+    dark: {
+      accent: darkAccent,
+      onAccent: '#000000',
+      accentSoft: blend(darkAccent, dark.background, 0.24),
+      heroFrom: darkHeroFrom,
+      heroTo: darkHeroTo,
+      ...DARK_TEXT,
+      primaryFill: darkPrimary,
+      onPrimary: DARK_TEXT.onHero,
+      ripple: `${darkAccent}3D`,
+      glows: darkGlows,
+    },
   };
 }

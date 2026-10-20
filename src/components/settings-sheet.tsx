@@ -3,7 +3,6 @@ import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet } from 'react-na
 import { Sheet } from '@/components/sheet';
 import { BudgetSection } from '@/components/settings/budget-section';
 import { CategoriesSection } from '@/components/settings/categories-section';
-import { ColorSection } from '@/components/settings/color-section';
 import { CurrencySection } from '@/components/settings/currency-section';
 import { DataSection } from '@/components/settings/data-section';
 import { Spacing } from '@/constants/theme';
@@ -24,7 +23,6 @@ export function SettingsSheet({ visible, onClose }: Props) {
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag">
           <BudgetSection />
-          <ColorSection />
           <CurrencySection />
           <CategoriesSection />
           <DataSection />
