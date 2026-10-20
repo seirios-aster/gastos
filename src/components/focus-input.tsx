@@ -1,5 +1,12 @@
 import { useState } from 'react';
-import { TextInput, type TextInputProps, type ViewStyle } from 'react-native';
+import {
+  StyleSheet,
+  TextInput,
+  View,
+  type TextInputProps,
+  type TextStyle,
+  type ViewStyle,
+} from 'react-native';
 
 import { useTheme } from '@/hooks/use-theme';
 
@@ -16,26 +23,57 @@ export function useFocusStyle(focused: boolean): ViewStyle | undefined {
   };
 }
 
+// The style keys that belong to the text itself; everything else styles the box around it.
+const TEXT_KEYS = [
+  'color',
+  'fontSize',
+  'fontWeight',
+  'fontFamily',
+  'fontStyle',
+  'lineHeight',
+  'letterSpacing',
+  'textAlign',
+] as const;
+
 /**
  * A TextInput that lights up while it is being typed in, so it is clear which field has the
  * keyboard. Use it exactly like TextInput.
+ *
+ * The field's look (fill, border, padding, shadow) is drawn on a box around the input, and the
+ * input inside is bare. Android drops an EditText's padding when a shadow drawable is set on it
+ * directly, which left the text touching the left border.
  */
 export function FocusInput({ style, onFocus, onBlur, ...rest }: TextInputProps) {
   const [focused, setFocused] = useState(false);
   const focus = useFocusStyle(focused);
 
+  const flat = (StyleSheet.flatten(style) ?? {}) as Record<string, unknown>;
+  const text: Record<string, unknown> = {};
+  const box: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(flat)) {
+    if ((TEXT_KEYS as readonly string[]).includes(key)) text[key] = value;
+    else box[key] = value;
+  }
+
   return (
-    <TextInput
-      {...rest}
-      style={[style, focus]}
-      onFocus={(event) => {
-        setFocused(true);
-        onFocus?.(event);
-      }}
-      onBlur={(event) => {
-        setFocused(false);
-        onBlur?.(event);
-      }}
-    />
+    <View style={[box as ViewStyle, styles.box, focus]}>
+      <TextInput
+        {...rest}
+        style={[styles.input, text as TextStyle]}
+        onFocus={(event) => {
+          setFocused(true);
+          onFocus?.(event);
+        }}
+        onBlur={(event) => {
+          setFocused(false);
+          onBlur?.(event);
+        }}
+      />
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  box: { flexDirection: 'row', alignItems: 'center' },
+  input: { flex: 1, minWidth: 0, padding: 0, margin: 0, textAlignVertical: 'center' },
+});
