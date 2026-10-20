@@ -10,6 +10,7 @@ import { ThemedText } from '@/components/themed-text';
 import { BottomTabInset, MaxContentWidth, Radius, Spacing, Touch } from '@/constants/theme';
 import { useExpenses } from '@/context/expenses-context';
 import { useSheetNotice } from '@/hooks/use-sheet-notice';
+import { useGlass } from '@/hooks/use-glass';
 import { useTheme } from '@/hooks/use-theme';
 
 const deletedText = (count: number) => (count === 1 ? 'Expense deleted' : `${count} expenses deleted`);
@@ -17,6 +18,7 @@ const deletedText = (count: number) => (count === 1 ? 'Expense deleted' : `${cou
 /** A snackbar above the tab bar that offers to bring back the expense that was just deleted. */
 export function UndoToast() {
   const theme = useTheme();
+  const glass = useGlass();
   const insets = useSafeAreaInsets();
   const { lastDeleted, undoDelete, dismissUndo } = useExpenses();
   const { notify, sheetProps } = useSheetNotice();
@@ -34,8 +36,8 @@ export function UndoToast() {
           style={[styles.wrapper, { bottom: insets.bottom + BottomTabInset + Spacing.three }]}>
           <Animated.View
             entering={FadeInDown.duration(200)}
-            style={[styles.toast, { backgroundColor: theme.text }]}>
-            <ThemedText type="small" themeColor="background" style={styles.message}>
+            style={[styles.toast, { backgroundColor: theme.toast }, glass.float]}>
+            <ThemedText type="small" style={styles.message}>
               {deletedText(lastDeleted.length)}
             </ThemedText>
             <Pressable
@@ -61,7 +63,7 @@ export function UndoToast() {
               onPress={dismissUndo}
               style={({ pressed }) => [styles.dismiss, pressed && styles.pressed]}>
               <SymbolView
-                tintColor={theme.background}
+                tintColor={theme.text}
                 name={{ ios: 'xmark', android: 'close', web: 'close' }}
                 size={16}
               />

@@ -6,7 +6,7 @@ import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing, Touch } from '@/constants/theme';
 import { useExpenses } from '@/context/expenses-context';
 import { useInputStyle } from '@/hooks/use-input-style';
-import { useGlassRing } from '@/hooks/use-glass-ring';
+import { useGlass } from '@/hooks/use-glass';
 import { useTheme } from '@/hooks/use-theme';
 import { tick } from '@/lib/haptics';
 
@@ -14,7 +14,7 @@ const PRESETS = ['', '$', '€', '£', '¥', '₱', '₹', '₩', 'R$'];
 
 export function CurrencySection() {
   const theme = useTheme();
-  const ring = useGlassRing();
+  const glass = useGlass();
   const inputStyle = useInputStyle();
   const { currency, setCurrency } = useExpenses();
   const [custom, setCustom] = useState('');
@@ -40,7 +40,7 @@ export function CurrencySection() {
               style={({ pressed }) => [
                 styles.chip,
                 { backgroundColor: selected ? theme.accent : theme.backgroundElement },
-                !selected && ring,
+                !selected && glass.chip,
                 pressed && styles.pressed,
               ]}>
               <ThemedText type="smallBold" themeColor={selected ? 'onAccent' : 'text'}>

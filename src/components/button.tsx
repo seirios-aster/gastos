@@ -1,8 +1,12 @@
 import { Pressable, StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
+import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing, Touch } from '@/constants/theme';
+import { useGlass } from '@/hooks/use-glass';
 import { useTheme } from '@/hooks/use-theme';
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 type Props = {
   label: string;
@@ -31,38 +35,39 @@ export function Button({
   style,
 }: Props) {
   const theme = useTheme();
+  const glass = useGlass();
   const primary = variant === 'primary';
 
+  // Pressing squeezes the button a little and lets go with a spring, so it feels like glass.
+  const press = useSharedValue(0);
+  const squeeze = useAnimatedStyle(() => ({
+    transform: [{ scale: 1 - press.get() * 0.035 }],
+    opacity: 1 - press.get() * 0.15,
+  }));
+
   return (
-    <Pressable
+    <AnimatedPressable
       accessibilityRole="button"
       accessibilityHint={accessibilityHint}
       accessibilityState={{ disabled, expanded }}
       disabled={disabled}
       onPress={onPress}
-      style={({ pressed }) => [
+      onPressIn={() => press.set(withSpring(1, { damping: 18, stiffness: 400 }))}
+      onPressOut={() => press.set(withSpring(0, { damping: 12, stiffness: 260 }))}
+      style={[
         styles.button,
         { backgroundColor: primary ? theme.primaryFill : theme.backgroundElement },
-        // On the glass look the quieter buttons get the same thin ring as cards.
-        theme.edge !== '#00000000' && {
-          boxShadow: primary
-            ? [
-                { offsetX: 0, offsetY: 0, blurRadius: 0, spreadDistance: 1, color: theme.edge, inset: true },
-                // A soft glow in the accent color under the button, so it still reads as the main action.
-                { offsetX: 0, offsetY: 6, blurRadius: 18, color: `${theme.accent}59` },
-              ]
-            : [{ offsetX: 0, offsetY: 0, blurRadius: 0, spreadDistance: 1, color: theme.edge, inset: true }],
-        },
+        primary ? glass.primary : glass.chip,
         disabled && styles.disabled,
-        pressed && styles.pressed,
         style,
+        squeeze,
       ]}>
       <ThemedText
         type="smallBold"
         themeColor={primary ? 'onPrimary' : variant === 'danger' ? 'danger' : 'text'}>
         {label}
       </ThemedText>
-    </Pressable>
+    </AnimatedPressable>
   );
 }
 
@@ -74,6 +79,5 @@ const styles = StyleSheet.create({
     borderRadius: Radius.control,
     paddingHorizontal: Spacing.three,
   },
-  pressed: { opacity: 0.8 },
   disabled: { opacity: 0.4 },
 });

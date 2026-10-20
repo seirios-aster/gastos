@@ -26,7 +26,7 @@ import { Radius, Spacing, Touch } from '@/constants/theme';
 import { useExpenses } from '@/context/expenses-context';
 import { useInputStyle } from '@/hooks/use-input-style';
 import { useSheetNotice } from '@/hooks/use-sheet-notice';
-import { useGlassRing } from '@/hooks/use-glass-ring';
+import { useGlass } from '@/hooks/use-glass';
 import { useTheme } from '@/hooks/use-theme';
 import { isSameDay } from '@/lib/dates';
 import { getCategory, MAX_NOTE_LENGTH } from '@/lib/expenses';
@@ -102,7 +102,7 @@ type FormProps = {
 
 function RecurringForm({ item, template, notify, onDone, onAdded }: FormProps) {
   const theme = useTheme();
-  const ring = useGlassRing();
+  const glass = useGlass();
   const inputStyle = useInputStyle();
   const { categories, currency, addRecurring, updateRecurring, setRecurringPaused, deleteRecurring } =
     useExpenses();
@@ -291,7 +291,7 @@ function RecurringForm({ item, template, notify, onDone, onAdded }: FormProps) {
                   style={({ pressed }) => [
                     styles.day,
                     { backgroundColor: selected ? theme.accent : theme.backgroundSelected },
-                    !selected && ring,
+                    !selected && glass.chip,
                     pressed && styles.pressed,
                   ]}>
                   <ThemedText type="smallBold" themeColor={selected ? 'onAccent' : 'text'}>

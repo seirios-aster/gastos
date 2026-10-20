@@ -3,7 +3,6 @@ import { describe, it } from 'node:test';
 
 import { DEFAULT_ACCENT, blend, contrastRatio, deriveAccent, hexToHsl, hslToHex, isHex, solid } from '../../constants/accent';
 import { paletteFor as rawPalette } from '../../constants/colors';
-import { DARK_TONES, type DarkToneName } from '../../constants/neutrals';
 
 /** A spread of picks: every 20 degrees of hue, grey to vivid, near-black to near-white. */
 const PICKS: string[] = [DEFAULT_ACCENT, '#000000', '#ffffff', '#808080', '#FFFF00', '#00FFFF'];
@@ -11,6 +10,20 @@ for (let h = 0; h < 360; h += 20) {
   for (const s of [0.15, 0.6, 1]) {
     for (const l of [0.08, 0.3, 0.5, 0.7, 0.92]) PICKS.push(hslToHex(h, s, l));
   }
+}
+
+/** The palette with see-through surfaces replaced by the colors they appear as over the screen. */
+function paletteFor(scheme: 'light' | 'dark', accent: string) {
+  const c = rawPalette(scheme, accent);
+  const element = solid(c.backgroundElement, c.background);
+  return {
+    ...c,
+    backgroundElement: element,
+    backgroundSelected: solid(c.backgroundSelected, element),
+    // The see-through number card, as it looks over the plain screen (the glow is tested below).
+    heroFrom: solid(c.heroFrom, c.background),
+    heroTo: solid(c.heroTo, c.background),
+  };
 }
 
 describe('colour helpers', () => {
@@ -49,31 +62,11 @@ describe('colour helpers', () => {
   });
 });
 
-/** The palette with see-through surfaces replaced by the colors they appear as over the screen. */
-function paletteFor(scheme: 'light' | 'dark', accent: string, tone: DarkToneName = 'glass') {
-  const c = rawPalette(scheme, accent, tone);
-  const element = solid(c.backgroundElement, c.background);
-  return {
-    ...c,
-    backgroundElement: element,
-    backgroundSelected: solid(c.backgroundSelected, element),
-    // The see-through number card, as it looks over the plain screen (the glow is tested below).
-    heroFrom: solid(c.heroFrom, c.background),
-    heroTo: solid(c.heroTo, c.background),
-  };
-}
-
-const CASES: ['light' | 'dark', DarkToneName][] = [
-  ['light', 'navy'],
-  ['light', 'glass'],
-  ...(Object.keys(DARK_TONES) as DarkToneName[]).map((tone): ['dark', DarkToneName] => ['dark', tone]),
-];
-
 describe('any chosen colour stays readable', () => {
-  for (const [scheme, tone] of CASES) {
-    it(`${scheme === 'dark' ? `dark (${tone})` : 'light'}: every pair passes the same checks as the default palette`, () => {
+  for (const scheme of ['light', 'dark'] as const) {
+    it(`${scheme}: every pair passes the same checks as the default palette`, () => {
       for (const pick of PICKS) {
-        const c = paletteFor(scheme, pick, tone);
+        const c = paletteFor(scheme, pick);
         const surfaces = [c.background, c.backgroundElement, c.backgroundSelected];
         const label = `${scheme} ${pick} -> ${c.accent}`;
 
@@ -95,27 +88,27 @@ describe('any chosen colour stays readable', () => {
   }
 });
 
-describe('dark tones', () => {
-  for (const tone of Object.keys(DARK_TONES) as DarkToneName[]) {
-    it(`${tone}: text, secondary text, danger and warning read on every surface`, () => {
-      const c = paletteFor('dark', DEFAULT_ACCENT, tone);
+describe('the glass surfaces', () => {
+  for (const scheme of ['light', 'dark'] as const) {
+    it(`${scheme}: text, secondary text, danger and warning read on every surface`, () => {
+      const c = paletteFor(scheme, DEFAULT_ACCENT);
       for (const surface of [c.background, c.backgroundElement, c.backgroundSelected]) {
         for (const name of ['text', 'textSecondary', 'danger', 'warning'] as const) {
-          assert.ok(contrastRatio(c[name], surface) >= 4.5, `${tone}: ${name} on ${surface}`);
+          assert.ok(contrastRatio(c[name], surface) >= 4.5, `${scheme}: ${name} on ${surface}`);
         }
-        assert.ok(contrastRatio(c.fieldBorder, surface) >= 3, `${tone}: field border on ${surface}`);
+        assert.ok(contrastRatio(c.fieldBorder, surface) >= 3, `${scheme}: field border on ${surface}`);
       }
     });
   }
 });
 
-describe('glass glow', () => {
-  it('keeps text readable even at the brightest point of a glow', () => {
-    for (const [scheme, tone] of [['dark', 'glass'], ['light', 'glass'], ['dark', 'sheet']] as const) {
+describe('the glow', () => {
+  it('keeps text readable even at the brightest point of any glow', () => {
+    for (const scheme of ['dark', 'light'] as const) {
       for (const pick of PICKS) {
-        const c = rawPalette(scheme, pick, tone);
-        for (const glow of [c.glowA, c.glowB, c.glowC]) {
-          // The glow at full strength over the screen, then the card over that.
+        const c = rawPalette(scheme, pick);
+        for (const glow of [c.glowA, c.glowB, c.glowC, c.glowD, c.glowE]) {
+          // The glow at full strength over the screen, then the card and a field over that.
           const screen = solid(glow, c.background);
           const card = solid(c.backgroundElement, screen);
           const field = solid(c.backgroundSelected, card);
@@ -127,13 +120,12 @@ describe('glass glow', () => {
               );
             }
           }
-          // The main button is a stronger tint over the screen, glow included.
+          // The main button and the number card are tints over the screen, glow included.
           const button = solid(c.primaryFill, screen);
           assert.ok(
             contrastRatio(c.onPrimary, button) >= 4.5,
             `${scheme} ${pick}: onPrimary on the button ${button} (glow ${glow})`
           );
-          // The number card is a tint over the screen, glow included.
           for (const end of [c.heroFrom, c.heroTo]) {
             const hero = solid(end, screen);
             for (const name of ['onHero', 'onHeroMuted'] as const) {
@@ -146,10 +138,5 @@ describe('glass glow', () => {
         }
       }
     }
-  });
-
-  it('has no glow or ring on the solid looks', () => {
-    const c = rawPalette('dark', DEFAULT_ACCENT, 'navy');
-    assert.deepEqual([c.glowA, c.glowB, c.glowC, c.edge], ['#00000000', '#00000000', '#00000000', '#00000000']);
   });
 });

@@ -36,8 +36,8 @@ export function SelectionBar({ count, total, onSelectAll, onDelete, onCancel }: 
           styles.top,
           {
             paddingTop: insets.top,
-            backgroundColor: theme.background,
-            borderBottomColor: theme.fieldBorder,
+            backgroundColor: theme.toast,
+            borderBottomColor: theme.edge,
           },
         ]}>
         <View style={styles.topRow}>
