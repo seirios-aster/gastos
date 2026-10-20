@@ -1,7 +1,11 @@
 import { Neutrals, surfacesFor } from './neutrals';
 
-/** The app's main color: sky blue. A readable shade for each theme is derived from it. */
-export const DEFAULT_ACCENT = '#6FB6FF';
+/**
+ * The accent is a cool near-white: glass UIs take their light from white edges and labels, not from
+ * one brand color. A readable shade for each theme is derived from it (in light mode it becomes a
+ * dark slate, since a pale color cannot carry white text). The colors in the glow do not follow it.
+ */
+export const DEFAULT_ACCENT = '#EEF2F8';
 
 /** Everything in the theme that follows the accent. */
 export type AccentSet = {
@@ -156,11 +160,11 @@ export function deriveAccent(base: string): AccentColors {
   });
 
   /**
-   * The five glow colors: the accent's own hue and four neighbours on the colour wheel. Each is
+   * The five glow colors: violet, teal, rose, blue and amber, whatever the accent is. Each is
    * dimmed (dark) or lightened (light) until secondary text still reads on it at full strength,
    * with a card and a field laid over it.
    */
-  const GLOW_HUES = [0, 55, -70, 130, 25];
+  const GLOW_HUES = [265, 175, 335, 215, 35];
   const glows = (
     start: number,
     step: number,
@@ -169,7 +173,7 @@ export function deriveAccent(base: string): AccentColors {
     textSecondary: string
   ) =>
     GLOW_HUES.map((shift, i) => {
-      const hex = search((h + shift + 360) % 360, Math.min(s, 0.85), start, step, (candidate) => {
+      const hex = search(shift, 0.75, start, step, (candidate) => {
         const screen = solid(`${candidate}${alpha[i]}`, surfaces.background);
         const card = solid(surfaces.backgroundElement, screen);
         const field = solid(surfaces.backgroundSelected, card);

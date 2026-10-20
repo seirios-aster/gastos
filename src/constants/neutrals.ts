@@ -45,7 +45,7 @@ const DARK_SURFACES: Surfaces = {
 };
 
 const LIGHT_SURFACES: Surfaces = {
-  background: '#EAF1FB',
+  background: '#EFF1F7',
   backgroundElement: '#FFFFFFB8',
   backgroundSelected: '#1E3C6E1F',
   edge: '#FFFFFFE6',

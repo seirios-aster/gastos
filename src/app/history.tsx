@@ -155,33 +155,7 @@ export default function HistoryScreen() {
         <HeaderActions />
       </View>
 
-      <View style={styles.searchRow}>
-        <FocusInput
-          style={[inputStyle, styles.search]}
-          value={query}
-          onChangeText={setQuery}
-          placeholder="Search notes, categories, amounts"
-          placeholderTextColor={theme.textSecondary}
-          returnKeyType="search"
-          autoCorrect={false}
-          accessibilityLabel="Search expenses"
-        />
-        {searching && (
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => setQuery('')}
-            style={({ pressed }) => [styles.clear, pressed && styles.pressed]}>
-            <ThemedText type="linkPrimary">Clear</ThemedText>
-          </Pressable>
-        )}
-      </View>
-
-      {searching ? (
-        <ThemedText type="small" themeColor="textSecondary">
-          {shown.length} {shown.length === 1 ? 'result' : 'results'} across all months ·{' '}
-          {formatMoney(sumCents(shown), currency)}
-        </ThemedText>
-      ) : (
+      {!searching && (
         <>
           <ThemedView type="backgroundElement" style={styles.monthRow}>
             <Pressable
@@ -293,7 +267,39 @@ export default function HistoryScreen() {
               })}
             </ThemedView>
           )}
+        </>
+      )}
 
+      {/* The search sits between the month's overview and the calendar: both are ways to find an
+          expense. It is always in the same place in the tree, so the keyboard stays up while typing. */}
+      <View style={styles.searchRow}>
+        <FocusInput
+          style={[inputStyle, styles.search]}
+          value={query}
+          onChangeText={setQuery}
+          placeholder="Search notes, categories, amounts"
+          placeholderTextColor={theme.textSecondary}
+          returnKeyType="search"
+          autoCorrect={false}
+          accessibilityLabel="Search expenses"
+        />
+        {searching && (
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => setQuery('')}
+            style={({ pressed }) => [styles.clear, pressed && styles.pressed]}>
+            <ThemedText type="linkPrimary">Clear</ThemedText>
+          </Pressable>
+        )}
+      </View>
+
+      {searching ? (
+        <ThemedText type="small" themeColor="textSecondary">
+          {shown.length} {shown.length === 1 ? 'result' : 'results'} across all months ·{' '}
+          {formatMoney(sumCents(shown), currency)}
+        </ThemedText>
+      ) : (
+        <>
           <DayCalendar
             monthTs={monthTs}
             totals={dayTotals}
