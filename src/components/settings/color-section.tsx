@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Button } from '@/components/button';
+import { Segmented } from '@/components/segmented';
 import { GradientSlider } from '@/components/gradient-slider';
 import { Section } from '@/components/settings/section';
 import { ThemedText } from '@/components/themed-text';
@@ -10,6 +11,7 @@ import { DEFAULT_ACCENT, hexToHsl, hslToHex } from '@/constants/accent';
 import { Radius, Spacing, Touch } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { resetAccent, setAccent, useAccent } from '@/lib/accent-preference';
+import { setDarkTone, useDarkTone } from '@/lib/dark-tone-preference';
 import { tick } from '@/lib/haptics';
 
 /** Ready-made colors. The first is the default; each one is made readable in light and dark mode. */
@@ -34,6 +36,7 @@ const HUE_STOPS = [0, 60, 120, 180, 240, 300, 360].map((h) => hslToHex(h, 1, 0.6
 export function ColorSection() {
   const theme = useTheme();
   const accent = useAccent();
+  const tone = useDarkTone();
   const preset = PRESETS.some((p) => p.hex === accent);
   const [mixing, setMixing] = useState(!preset);
   const [hue, saturation] = hexToHsl(accent);
@@ -112,6 +115,24 @@ export function ColorSection() {
             value={(saturation - MIN_VIVID) / (1 - MIN_VIVID)}
             colors={[hslToHex(hue, MIN_VIVID, MIX_LIGHTNESS), hslToHex(hue, 1, MIX_LIGHTNESS)]}
             onChange={(v) => setAccent(hslToHex(hue, MIN_VIVID + v * (1 - MIN_VIVID), MIX_LIGHTNESS))}
+          />
+        </View>
+      ) : null}
+
+      {/* For trying the two dark looks side by side while testing; the released app does not show it. */}
+      {__DEV__ ? (
+        <View style={styles.mixer}>
+          <ThemedText type="small" themeColor="textSecondary">
+            Dark tone (testing only)
+          </ThemedText>
+          <Segmented
+            accessibilityLabel="Dark tone"
+            options={[
+              { value: 'navy', label: 'Navy' },
+              { value: 'slate', label: 'Slate' },
+            ]}
+            value={tone}
+            onChange={setDarkTone}
           />
         </View>
       ) : null}

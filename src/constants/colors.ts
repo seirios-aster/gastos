@@ -5,13 +5,18 @@
  * follow the person's choice at runtime (see useTheme).
  */
 import { DEFAULT_ACCENT, deriveAccent, type AccentSet } from './accent';
-import { Neutrals } from './neutrals';
+import { DARK_TONES, DEFAULT_DARK_TONE, Neutrals, type DarkToneName } from './neutrals';
 
 export type Palette = { [K in keyof (typeof Neutrals)['light']]: string } & AccentSet;
 
 /** The full palette for one theme with this accent (any #rrggbb). */
-export function paletteFor(scheme: 'light' | 'dark', accent: string): Palette {
-  return { ...Neutrals[scheme], ...deriveAccent(accent)[scheme] };
+export function paletteFor(
+  scheme: 'light' | 'dark',
+  accent: string,
+  tone: DarkToneName = DEFAULT_DARK_TONE
+): Palette {
+  const surfaces = scheme === 'dark' ? DARK_TONES[tone] : {};
+  return { ...Neutrals[scheme], ...surfaces, ...deriveAccent(accent, tone)[scheme] };
 }
 
 export const Colors: { light: Palette; dark: Palette } = {

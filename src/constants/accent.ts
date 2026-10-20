@@ -1,4 +1,4 @@
-import { Neutrals } from './neutrals';
+import { DARK_TONES, DEFAULT_DARK_TONE, Neutrals, type DarkToneName } from './neutrals';
 
 /** The main color people start with. Sky blue; the app derives a readable shade for each theme from it. */
 export const DEFAULT_ACCENT = '#6FB6FF';
@@ -99,12 +99,12 @@ function search(h: number, s: number, start: number, step: number, ok: (hex: str
  * read on black); light mode darkens it until white text sits on it comfortably, because a pale
  * color cannot carry white text. The same rules the contrast tests check are applied here.
  */
-export function deriveAccent(base: string): AccentColors {
+export function deriveAccent(base: string, tone: DarkToneName = DEFAULT_DARK_TONE): AccentColors {
   const [h, s, l] = hexToHsl(isHex(base) ? base : DEFAULT_ACCENT);
   // A fully vivid colour turned darker looks harsh, so the darker shades ease off a little.
   const sDeep = Math.min(s, 0.65);
   const light = Neutrals.light;
-  const dark = Neutrals.dark;
+  const dark = { ...Neutrals.dark, ...DARK_TONES[tone] };
 
   const darkAccent = search(h, s, l, STEP, (hex) => {
     const soft = blend(hex, dark.background, 0.24);
