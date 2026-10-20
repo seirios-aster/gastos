@@ -89,19 +89,19 @@ export function ActionSheet({ visible, title, message, actions, cancelLabel = 'C
                   styles.action,
                   {
                     backgroundColor:
-                      primary && !action.destructive ? theme.accent : theme.backgroundSelected,
+                      primary && !action.destructive ? theme.primaryFill : theme.backgroundSelected,
                   },
                   pressed && styles.pressed,
                 ]}>
                 <ThemedText
                   type="smallBold"
-                  themeColor={action.destructive ? 'danger' : primary ? 'onAccent' : 'text'}>
+                  themeColor={action.destructive ? 'danger' : primary ? 'onPrimary' : 'text'}>
                   {action.label}
                 </ThemedText>
                 {action.description ? (
                   <ThemedText
                     type="small"
-                    themeColor={primary ? 'onAccent' : 'textSecondary'}
+                    themeColor={primary ? 'onPrimary' : 'textSecondary'}
                     style={styles.description}>
                     {action.description}
                   </ThemedText>

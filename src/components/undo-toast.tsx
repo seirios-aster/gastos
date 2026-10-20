@@ -50,10 +50,10 @@ export function UndoToast() {
               }}
               style={({ pressed }) => [
                 styles.undo,
-                { backgroundColor: theme.accent },
+                { backgroundColor: theme.primaryFill },
                 pressed && styles.pressed,
               ]}>
-              <ThemedText type="smallBold" themeColor="onAccent">
+              <ThemedText type="smallBold" themeColor="onPrimary">
                 Undo
               </ThemedText>
             </Pressable>

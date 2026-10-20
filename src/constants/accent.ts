@@ -177,8 +177,8 @@ export function deriveAccent(base: string): AccentColors {
       });
       return `${hex}${alpha[i]}`;
     }) as AccentSet['glows'];
-  const darkGlows = glows(0.45, -STEP, ['3D', '33', '2B', '29', '24'], darkS, dark.textSecondary);
-  const lightGlows = glows(0.8, STEP, ['85', '70', '5C', '59', '4D'], lightS, light.textSecondary);
+  const darkGlows = glows(0.45, -STEP, ['5C', '4D', '40', '38', '33'], darkS, dark.textSecondary);
+  const lightGlows = glows(0.8, STEP, ['99', '85', '70', '66', '5C'], lightS, light.textSecondary);
 
   /**
    * A see-through tint of the accent for the number card and the main button, kept just strong
@@ -205,10 +205,10 @@ export function deriveAccent(base: string): AccentColors {
   };
   const DARK_TEXT = { onHero: '#FFFFFF', onHeroMuted: '#E4ECF8' };
   const LIGHT_TEXT = { onHero: '#0B1B33', onHeroMuted: '#33415C' };
-  const [darkHeroFrom, darkHeroTo] = tint(darkS, darkGlows, ['#FFFFFF', '#E4ECF8'], ['80', '52'], 0.5, -STEP);
-  const [lightHeroFrom, lightHeroTo] = tint(lightS, lightGlows, ['#0B1B33', '#33415C'], ['3D', '24'], 0.5, STEP);
-  const [darkPrimary] = tint(darkS, darkGlows, ['#FFFFFF', '#FFFFFF'], ['B3', 'B3'], 0.5, -STEP);
-  const [lightPrimary] = tint(lightS, lightGlows, ['#0B1B33', '#0B1B33'], ['B3', 'B3'], 0.55, STEP);
+  const [darkHeroFrom, darkHeroTo] = tint(darkS, darkGlows, ['#FFFFFF', '#E4ECF8'], ['4D', '29'], 0.5, -STEP);
+  const [lightHeroFrom, lightHeroTo] = tint(lightS, lightGlows, ['#0B1B33', '#33415C'], ['33', '1F'], 0.5, STEP);
+  const [darkPrimary] = tint(darkS, darkGlows, ['#FFFFFF', '#FFFFFF'], ['8C', '8C'], 0.5, -STEP);
+  const [lightPrimary] = tint(lightS, lightGlows, ['#0B1B33', '#0B1B33'], ['99', '99'], 0.55, STEP);
 
   return {
     light: {

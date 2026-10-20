@@ -3,6 +3,7 @@ import { Pressable, StyleSheet } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Radius, Spacing, Touch } from '@/constants/theme';
+import { useGlass } from '@/hooks/use-glass';
 import { useTheme } from '@/hooks/use-theme';
 import { tick } from '@/lib/haptics';
 
@@ -22,6 +23,7 @@ export function Segmented<T extends string>({
   accessibilityLabel,
 }: Props<T>) {
   const theme = useTheme();
+  const glass = useGlass();
 
   return (
     <ThemedView
@@ -42,7 +44,7 @@ export function Segmented<T extends string>({
             }}
             style={({ pressed }) => [
               styles.segment,
-              selected && { backgroundColor: theme.accent },
+              selected && [{ backgroundColor: theme.primaryFill }, glass.selected],
               pressed && styles.pressed,
             ]}>
             {/* Two lines allowed: "Day before" must not be cut off at a big font size. */}
@@ -50,7 +52,7 @@ export function Segmented<T extends string>({
               type="smallBold"
               numberOfLines={2}
               style={styles.label}
-              themeColor={selected ? 'onAccent' : 'text'}>
+              themeColor={selected ? 'onPrimary' : 'text'}>
               {option.label}
             </ThemedText>
           </Pressable>
