@@ -14,7 +14,7 @@ import { useTheme } from '@/hooks/use-theme';
 /** The same color fully see-through, so a glow fades out without turning grey. */
 const faded = (color: string) => `${color.slice(0, 7)}00`;
 
-type Blob = {
+export type Blob = {
   /** Where its center sits, as a share of the screen. */
   x: number;
   y: number;
@@ -28,7 +28,7 @@ type Blob = {
 // Eight soft-edged shapes of color, spread over the whole height so every card has something
 // behind it. They are what the glass tints, so they need a defined edge (a flat glow would fade
 // into nothing). They sit around and behind where cards are.
-const BLOBS: Blob[] = [
+export const BLOBS: Blob[] = [
   { x: 0.02, y: 0.04, size: 300, dx: 34, dy: 26, seconds: 14 },
   { x: 1.0, y: 0.2, size: 300, dx: -30, dy: 34, seconds: 17 },
   { x: 0.0, y: 0.42, size: 300, dx: 28, dy: -28, seconds: 19 },

@@ -10,6 +10,7 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { FrostLayer } from '@/components/frost-layer';
+import { LiquidLayer } from '@/components/liquid-layer';
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
 import { useGlass } from '@/hooks/use-glass';
@@ -83,6 +84,7 @@ export function SummaryCard({ label, amount, footer, children }: Props) {
         accessibilityLabel={`${label}, ${amount}. ${footer}`}
         style={[styles.top, heroStyle, gradientStyle, glass.inset]}>
         <FrostLayer />
+        <LiquidLayer radius={Radius.card} tintFrom={theme.heroFrom} tintTo={theme.heroTo} openBottom={children !== undefined} />
         <Glint />
         <ThemedText type="small" themeColor="onHeroMuted">
           {label}
