@@ -24,7 +24,12 @@ export function GlassScreen({ style, children }: Props) {
   return (
     <BlurTargetContext.Provider value={target}>
       <View style={[{ backgroundColor: theme.background }, style]}>
-        <BlurTargetView ref={target} pointerEvents="none" style={StyleSheet.absoluteFill}>
+        {/* The target needs the screen color as its own background: a blur samples only what is
+            inside it, and transparent pixels blur to a pale grey instead of the dark screen. */}
+        <BlurTargetView
+          ref={target}
+          pointerEvents="none"
+          style={[StyleSheet.absoluteFill, { backgroundColor: theme.background }]}>
           <GlowBackground />
         </BlurTargetView>
         {children}

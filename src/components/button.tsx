@@ -57,7 +57,8 @@ export function Button({
       style={[
         styles.button,
         { backgroundColor: primary ? theme.primaryFill : theme.backgroundElement },
-        primary ? glass.primary : glass.chip,
+        // The main button is built like the chips: the same ring and bevel, so it has the same thickness.
+        glass.chip,
         disabled && styles.disabled,
         style,
         squeeze,

@@ -34,11 +34,7 @@ export function useGlass() {
     card: { boxShadow: [drop(6, 18), ring, rimLight, rimDark, innerGlow] } as ViewStyle,
     /** Chips, pills and the quieter buttons: small, so no shadow underneath. */
     chip: { boxShadow: [ring, rimLight, rimDark] } as ViewStyle,
-    /** The main button: the same, with a soft glow in the accent color underneath. */
-    primary: {
-      boxShadow: [drop(8, 20, `${t.accent}55`), { ...ring, color: t.accent, spreadDistance: 1.5 }, rimLight, rimDark, innerGlow],
-    } as ViewStyle,
-    /** A chosen chip, segment or day: the glass tint with an accent-colored ring. */
+    /** A chosen chip, segment or day: the same glass with a bright ring. */
     selected: {
       boxShadow: [{ ...ring, color: t.accent, spreadDistance: 1.5 }, rimLight, rimDark],
     } as ViewStyle,
