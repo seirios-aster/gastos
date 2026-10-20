@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { DEFAULT_ACCENT, blend, contrastRatio, deriveAccent, hexToHsl, hslToHex, isHex } from '../../constants/accent';
-import { paletteFor } from '../../constants/colors';
+import { DEFAULT_ACCENT, blend, contrastRatio, deriveAccent, hexToHsl, hslToHex, isHex, solid } from '../../constants/accent';
+import { paletteFor as rawPalette } from '../../constants/colors';
 import { DARK_TONES, type DarkToneName } from '../../constants/neutrals';
 
 /** A spread of picks: every 20 degrees of hue, grey to vivid, near-black to near-white. */
@@ -49,8 +49,16 @@ describe('colour helpers', () => {
   });
 });
 
+/** The palette with see-through surfaces replaced by the colors they appear as over the screen. */
+function paletteFor(scheme: 'light' | 'dark', accent: string, tone: DarkToneName = 'glass') {
+  const c = rawPalette(scheme, accent, tone);
+  const element = solid(c.backgroundElement, c.background);
+  return { ...c, backgroundElement: element, backgroundSelected: solid(c.backgroundSelected, element) };
+}
+
 const CASES: ['light' | 'dark', DarkToneName][] = [
   ['light', 'navy'],
+  ['light', 'glass'],
   ...(Object.keys(DARK_TONES) as DarkToneName[]).map((tone): ['dark', DarkToneName] => ['dark', tone]),
 ];
 
@@ -92,4 +100,33 @@ describe('dark tones', () => {
       }
     });
   }
+});
+
+describe('glass glow', () => {
+  it('keeps text readable even at the brightest point of a glow', () => {
+    for (const [scheme, tone] of [['dark', 'glass'], ['light', 'glass']] as const) {
+      for (const pick of PICKS) {
+        const c = rawPalette(scheme, pick, tone);
+        for (const glow of [c.glowA, c.glowB, c.glowC]) {
+          // The glow at full strength over the screen, then the card over that.
+          const screen = solid(glow, c.background);
+          const card = solid(c.backgroundElement, screen);
+          const field = solid(c.backgroundSelected, card);
+          for (const surface of [screen, card, field]) {
+            for (const name of ['text', 'textSecondary'] as const) {
+              assert.ok(
+                contrastRatio(c[name], surface) >= 4.5,
+                `${scheme} ${pick}: ${name} on ${surface} (glow ${glow})`
+              );
+            }
+          }
+        }
+      }
+    }
+  });
+
+  it('has no glow or ring on the solid looks', () => {
+    const c = rawPalette('dark', DEFAULT_ACCENT, 'navy');
+    assert.deepEqual([c.glowA, c.glowB, c.glowC, c.edge], ['#00000000', '#00000000', '#00000000', '#00000000']);
+  });
 });

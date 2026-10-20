@@ -1,6 +1,7 @@
 import { Modal, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { GlowBackground } from '@/components/glow-background';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing, Touch } from '@/constants/theme';
@@ -22,6 +23,7 @@ export function Sheet({ visible, title, onClose, children }: Props) {
       statusBarTranslucent
       onRequestClose={onClose}>
       <ThemedView style={styles.flex}>
+        <GlowBackground />
         <SafeAreaView
           style={styles.flex}
           edges={Platform.OS === 'android' ? ['top', 'bottom'] : ['bottom']}>

@@ -1,4 +1,4 @@
-import { View, type ViewProps } from 'react-native';
+import { View, type ViewProps, type ViewStyle } from 'react-native';
 
 import { ThemeColor } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -12,5 +12,11 @@ export type ThemedViewProps = ViewProps & {
 export function ThemedView({ style, lightColor, darkColor, type, ...otherProps }: ThemedViewProps) {
   const theme = useTheme();
 
-  return <View style={[{ backgroundColor: theme[type ?? 'background'] }, style]} {...otherProps} />;
+  // On the glass look, cards get a thin light ring (drawn inside, so nothing moves or resizes).
+  const ring: ViewStyle | undefined =
+    type === 'backgroundElement' && theme.edge !== '#00000000'
+      ? { boxShadow: [{ offsetX: 0, offsetY: 0, blurRadius: 0, spreadDistance: 1, color: theme.edge, inset: true }] }
+      : undefined;
+
+  return <View style={[{ backgroundColor: theme[type ?? 'background'] }, ring, style]} {...otherProps} />;
 }

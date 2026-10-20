@@ -1,4 +1,4 @@
-import { DARK_TONES, DEFAULT_DARK_TONE, Neutrals, type DarkToneName } from './neutrals';
+import { DEFAULT_DARK_TONE, Neutrals, surfacesFor, type DarkToneName } from './neutrals';
 
 /** The main color people start with. Sky blue; the app derives a readable shade for each theme from it. */
 export const DEFAULT_ACCENT = '#6FB6FF';
@@ -15,6 +15,10 @@ export type AccentSet = {
   heroTo: string;
   /** The accent at 12% (light) or 24% (dark) alpha, as #rrggbbaa: the press ripple on a tab. */
   ripple: string;
+  /** Soft color glows drawn behind a glass screen (#rrggbbaa); fully transparent for the solid looks. */
+  glowA: string;
+  glowB: string;
+  glowC: string;
 };
 
 export type AccentColors = { light: AccentSet; dark: AccentSet };
@@ -73,6 +77,12 @@ export function contrastRatio(a: string, b: string): number {
   return (hi + 0.05) / (lo + 0.05);
 }
 
+/** A color that may have an alpha (#rrggbbaa), as the plain color it appears as over `backdrop`. */
+export function solid(color: string, backdrop: string): string {
+  if (color.length !== 9) return color;
+  return blend(color.slice(0, 7), backdrop, parseInt(color.slice(7, 9), 16) / 255);
+}
+
 /** `color` drawn at `opacity` over `backdrop`. */
 export function blend(color: string, backdrop: string, opacity: number): string {
   const [c, b] = [toRgb(color), toRgb(backdrop)];
@@ -103,8 +113,19 @@ export function deriveAccent(base: string, tone: DarkToneName = DEFAULT_DARK_TON
   const [h, s, l] = hexToHsl(isHex(base) ? base : DEFAULT_ACCENT);
   // A fully vivid colour turned darker looks harsh, so the darker shades ease off a little.
   const sDeep = Math.min(s, 0.65);
-  const light = Neutrals.light;
-  const dark = { ...Neutrals.dark, ...DARK_TONES[tone] };
+  const lightS = surfacesFor('light', tone);
+  const darkS = surfacesFor('dark', tone);
+  // Surfaces can be see-through, so check against what they look like over the screen and each other.
+  const resolve = (surfaces: typeof lightS) => {
+    const element = solid(surfaces.backgroundElement, surfaces.background);
+    return {
+      background: surfaces.background,
+      backgroundElement: element,
+      backgroundSelected: solid(surfaces.backgroundSelected, element),
+    };
+  };
+  const light = { ...Neutrals.light, ...resolve(lightS) };
+  const dark = { ...Neutrals.dark, ...resolve(darkS) };
 
   const darkAccent = search(h, s, l, STEP, (hex) => {
     const soft = blend(hex, dark.background, 0.24);
@@ -134,17 +155,60 @@ export function deriveAccent(base: string, tone: DarkToneName = DEFAULT_DARK_TON
   const heroFrom = search(h, sDeep, hexToHsl(lightAccent)[2], -STEP, readsOnHero);
   const heroTo = search(h, sDeep, Math.max(hexToHsl(heroFrom)[2] - 0.1, 0.1), -STEP, readsOnHero);
 
-  const set = (accent: string, onAccent: string, mix: number, alpha: string, bg: string): AccentSet => ({
+  const glass = tone === 'glass';
+  const none = '#00000000';
+  /**
+   * The three glow colors: the accent's own hue and two neighbours on the colour wheel. Each is
+   * dimmed (dark) or lightened (light) until secondary text still reads on it at full strength,
+   * with a card and a field laid over it.
+   */
+  const glows = (
+    start: number,
+    step: number,
+    alpha: [string, string, string],
+    surfaces: typeof lightS,
+    textSecondary: string
+  ) =>
+    [h, h + 55, h - 70].map((hue, i) => {
+      const hex = search(
+        (hue + 360) % 360,
+        Math.min(s, 0.85),
+        start,
+        step,
+        (candidate) => {
+          const screen = solid(`${candidate}${alpha[i]}`, surfaces.background);
+          const card = solid(surfaces.backgroundElement, screen);
+          const field = solid(surfaces.backgroundSelected, card);
+          return [screen, card, field].every((surface) => contrastRatio(textSecondary, surface) >= 4.6);
+        }
+      );
+      return `${hex}${alpha[i]}`;
+    });
+  const none3 = [none, none, none];
+  const darkGlows = glass ? glows(0.45, -STEP, ['38', '2B', '22'], darkS, dark.textSecondary) : none3;
+  const lightGlows = glass ? glows(0.8, STEP, ['80', '66', '50'], lightS, light.textSecondary) : none3;
+
+  const set = (
+    accent: string,
+    onAccent: string,
+    mix: number,
+    alpha: string,
+    bg: string,
+    [glowA, glowB, glowC]: string[]
+  ): AccentSet => ({
     accent,
     onAccent,
     accentSoft: blend(accent, bg, mix),
     heroFrom,
     heroTo,
     ripple: `${accent}${alpha}`,
+    glowA,
+    glowB,
+    glowC,
   });
 
   return {
-    light: set(lightAccent, '#ffffff', 0.12, '1F', light.background),
-    dark: set(darkAccent, '#000000', 0.24, '3D', dark.background),
+    light: set(lightAccent, '#ffffff', 0.12, '1F', light.background, lightGlows),
+    dark: set(darkAccent, '#000000', 0.24, '3D', dark.background, darkGlows),
   };
 }
