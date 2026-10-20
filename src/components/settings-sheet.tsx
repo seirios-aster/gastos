@@ -1,6 +1,7 @@
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet } from 'react-native';
 
 import { Sheet } from '@/components/sheet';
+import { BackgroundSection } from '@/components/settings/background-section';
 import { BudgetSection } from '@/components/settings/budget-section';
 import { CategoriesSection } from '@/components/settings/categories-section';
 import { CurrencySection } from '@/components/settings/currency-section';
@@ -23,6 +24,7 @@ export function SettingsSheet({ visible, onClose }: Props) {
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag">
           <BudgetSection />
+          <BackgroundSection />
           <CurrencySection />
           <CategoriesSection />
           <DataSection />
