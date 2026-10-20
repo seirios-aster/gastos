@@ -25,14 +25,18 @@ type Blob = {
   seconds: number;
 };
 
-// Five soft-edged shapes of color. They are what frosted panels blur, so they need a defined
-// edge (a flat glow would blur into nothing). They sit around and behind where cards are.
+// Eight soft-edged shapes of color, spread over the whole height so every card has something
+// behind it. They are what the glass tints, so they need a defined edge (a flat glow would fade
+// into nothing). They sit around and behind where cards are.
 const BLOBS: Blob[] = [
-  { x: 0.02, y: 0.04, size: 280, dx: 34, dy: 26, seconds: 14 },
-  { x: 1.0, y: 0.26, size: 260, dx: -30, dy: 34, seconds: 17 },
-  { x: 0.0, y: 0.6, size: 280, dx: 28, dy: -28, seconds: 19 },
-  { x: 1.0, y: 0.84, size: 260, dx: -26, dy: -22, seconds: 16 },
-  { x: 0.5, y: 0.5, size: 200, dx: 38, dy: 30, seconds: 22 },
+  { x: 0.02, y: 0.04, size: 300, dx: 34, dy: 26, seconds: 14 },
+  { x: 1.0, y: 0.2, size: 300, dx: -30, dy: 34, seconds: 17 },
+  { x: 0.0, y: 0.42, size: 300, dx: 28, dy: -28, seconds: 19 },
+  { x: 0.95, y: 0.56, size: 280, dx: -34, dy: 26, seconds: 15 },
+  { x: 0.05, y: 0.74, size: 300, dx: 30, dy: -24, seconds: 20 },
+  { x: 1.0, y: 0.9, size: 280, dx: -26, dy: -22, seconds: 16 },
+  { x: 0.5, y: 0.5, size: 220, dx: 38, dy: 30, seconds: 22 },
+  { x: 0.5, y: 0.82, size: 220, dx: -36, dy: -20, seconds: 18 },
 ];
 
 function GlowBlob({ blob, color, still }: { blob: Blob; color: string; still: boolean }) {
@@ -80,7 +84,7 @@ function GlowBlob({ blob, color, still }: { blob: Blob; color: string; still: bo
 }
 
 /**
- * The soft color glow behind every screen: five slowly drifting shapes of color. Put it first
+ * The soft color glow behind every screen: eight slowly drifting shapes of color. Put it first
  * inside a screen so everything else lies on top. It stands still when the phone asks apps to
  * reduce motion.
  */
@@ -97,7 +101,7 @@ export function GlowBackground() {
       importantForAccessibility="no-hide-descendants"
       style={styles.layer}>
       {BLOBS.map((blob, i) => (
-        <GlowBlob key={i} blob={blob} color={colors[i]} still={still} />
+        <GlowBlob key={i} blob={blob} color={colors[i % colors.length]} still={still} />
       ))}
     </View>
   );

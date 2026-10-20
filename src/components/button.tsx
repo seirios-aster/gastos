@@ -44,6 +44,8 @@ export function Button({
     transform: [{ scale: 1 - press.get() * 0.035 }],
     opacity: 1 - press.get() * 0.15,
   }));
+  // A soft light fills the glass under the finger while it is held, and fades when let go.
+  const light = useAnimatedStyle(() => ({ opacity: press.get() }));
 
   return (
     <AnimatedPressable
@@ -63,6 +65,7 @@ export function Button({
         style,
         squeeze,
       ]}>
+      <Animated.View pointerEvents="none" style={[styles.light, light]} />
       <ThemedText
         type="smallBold"
         themeColor={primary ? 'onPrimary' : variant === 'danger' ? 'danger' : 'text'}>
@@ -81,4 +84,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
   },
   disabled: { opacity: 0.4 },
+  light: { ...StyleSheet.absoluteFill, borderRadius: Radius.control, backgroundColor: '#FFFFFF2E' },
 });
