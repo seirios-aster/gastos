@@ -16,6 +16,9 @@ export type AccentSet = {
   /** Text on the number card (it differs when the card is glass, and in light mode is dark). */
   onHero: string;
   onHeroMuted: string;
+  /** The main action button's fill and its text: solid accent normally, a stronger tint on glass. */
+  primaryFill: string;
+  onPrimary: string;
   /** The accent at 12% (light) or 24% (dark) alpha, as #rrggbbaa: the press ripple on a tab. */
   ripple: string;
   /** Soft color glows drawn behind a glass screen (#rrggbbaa); fully transparent for the solid looks. */
@@ -221,6 +224,12 @@ export function deriveAccent(base: string, tone: DarkToneName = DEFAULT_DARK_TON
   const lightHero = glass
     ? glassHero(lightS, lightGlows, ['#0B1B33', '#33415C'], ['3D', '24'], 0.5, STEP)
     : solidHero;
+  const darkPrimary = glass
+    ? glassHero(darkS, darkGlows, ['#FFFFFF', '#FFFFFF'], ['B3', 'B3'], 0.5, -STEP).heroFrom
+    : null;
+  const lightPrimary = glass
+    ? glassHero(lightS, lightGlows, ['#0B1B33', '#0B1B33'], ['B3', 'B3'], 0.55, STEP).heroFrom
+    : null;
   const heroText = (scheme: 'light' | 'dark') =>
     glass
       ? scheme === 'dark'
@@ -236,13 +245,16 @@ export function deriveAccent(base: string, tone: DarkToneName = DEFAULT_DARK_TON
     bg: string,
     [glowA, glowB, glowC]: string[],
     hero: { heroFrom: string; heroTo: string },
-    text: { onHero: string; onHeroMuted: string }
+    text: { onHero: string; onHeroMuted: string },
+    primary: string | null
   ): AccentSet => ({
     accent,
     onAccent,
     accentSoft: blend(accent, bg, mix),
     ...hero,
     ...text,
+    primaryFill: primary ?? accent,
+    onPrimary: primary === null ? onAccent : text.onHero,
     ripple: `${accent}${alpha}`,
     glowA,
     glowB,
@@ -250,7 +262,7 @@ export function deriveAccent(base: string, tone: DarkToneName = DEFAULT_DARK_TON
   });
 
   return {
-    light: set(lightAccent, '#ffffff', 0.12, '1F', light.background, lightGlows, lightHero, heroText('light')),
-    dark: set(darkAccent, '#000000', 0.24, '3D', dark.background, darkGlows, darkHero, heroText('dark')),
+    light: set(lightAccent, '#ffffff', 0.12, '1F', light.background, lightGlows, lightHero, heroText('light'), lightPrimary),
+    dark: set(darkAccent, '#000000', 0.24, '3D', dark.background, darkGlows, darkHero, heroText('dark'), darkPrimary),
   };
 }
