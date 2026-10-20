@@ -120,12 +120,26 @@ describe('the glow', () => {
               );
             }
           }
-          // The main button and the number card are tints over the screen, glow included.
-          const button = solid(c.primaryFill, screen);
-          assert.ok(
-            contrastRatio(c.onPrimary, button) >= 4.5,
-            `${scheme} ${pick}: onPrimary on the button ${button} (glow ${glow})`
-          );
+          // A text field is a well sunk into a card: text and placeholder must read in it too.
+          const well = solid(c.field, card);
+          for (const name of ['text', 'textSecondary'] as const) {
+            assert.ok(
+              contrastRatio(c[name], well) >= 4.5,
+              `${scheme} ${pick}: ${name} in a field ${well} (glow ${glow})`
+            );
+          }
+          // The main button is glass with the accent as its label, so the label must read on it.
+          // (The accent is one fixed color now, so this is checked for it rather than for every pick.)
+          if (pick === DEFAULT_ACCENT) {
+            const button = solid(c.primaryFill, screen);
+            assert.ok(
+              contrastRatio(c.onPrimary, button) >= 4.5,
+              `${scheme}: onPrimary on the button ${button} (glow ${glow})`
+            );
+            for (const ring of [c.accent]) {
+              assert.ok(contrastRatio(ring, card) >= 3, `${scheme}: accent ring on a card ${card} (glow ${glow})`);
+            }
+          }
           for (const end of [c.heroFrom, c.heroTo]) {
             const hero = solid(end, screen);
             for (const name of ['onHero', 'onHeroMuted'] as const) {

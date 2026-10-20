@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, Share, StyleSheet, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, Share, StyleSheet, View } from 'react-native';
 
+import { FocusInput } from '@/components/focus-input';
 import { ActionSheet } from '@/components/action-sheet';
 import { Button } from '@/components/button';
 import { FieldError } from '@/components/field-error';
@@ -100,7 +101,7 @@ function Balance({ group, currency }: { group: PersonGroup; currency: string }) 
       ? `${group.person} owes you`
       : `You owe ${group.person}`;
   return (
-    <ThemedView type="backgroundElement" style={styles.balance}>
+    <ThemedView type="backgroundElement" blur style={styles.balance}>
       <ThemedText type="small" themeColor="textSecondary">
         {text}
       </ThemedText>
@@ -182,7 +183,7 @@ function LoanCard({ loan, now, currency, onEdit, notify }: CardProps) {
   }
 
   return (
-    <ThemedView type="backgroundElement" style={styles.card}>
+    <ThemedView type="backgroundElement" blur style={styles.card}>
       <View style={styles.cardTop}>
         <View style={styles.flex}>
           <ThemedText type="smallBold" themeColor="textSecondary">
@@ -237,7 +238,7 @@ function LoanCard({ loan, now, currency, onEdit, notify }: CardProps) {
 
       {!settled && (
         <View style={styles.pay}>
-          <TextInput
+          <FocusInput
             style={[inputStyle, styles.payInput]}
             value={amount}
             onChangeText={(text) => {

@@ -48,7 +48,7 @@ export function UpcomingCard({ items, now }: Props) {
   if (upcoming.length === 0) {
     const later = nextCharges(items, now);
     return (
-      <ThemedView type="backgroundElement" style={styles.card}>
+      <ThemedView type="backgroundElement" blur style={styles.card}>
         <ThemedText type="smallBold" accessibilityRole="header">
           Next 30 days
         </ThemedText>
@@ -70,7 +70,7 @@ export function UpcomingCard({ items, now }: Props) {
   const charges = `${upcoming.length} ${upcoming.length === 1 ? 'charge' : 'charges'}`;
 
   return (
-    <ThemedView type="backgroundElement" style={styles.card}>
+    <ThemedView type="backgroundElement" blur style={styles.card}>
       {/* Wraps, so on a narrow screen the total drops under the title. */}
       <View style={styles.top}>
         <ThemedText type="smallBold" accessibilityRole="header">

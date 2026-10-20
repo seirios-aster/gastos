@@ -5,10 +5,10 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  TextInput,
   View,
 } from 'react-native';
 
+import { FocusInput } from '@/components/focus-input';
 import { ActionSheet, type SheetNotice } from '@/components/action-sheet';
 import { Button } from '@/components/button';
 import { FieldError } from '@/components/field-error';
@@ -187,7 +187,7 @@ function LoanForm({ loan, person: startPerson, notify, onDone }: FormProps) {
         {direction === 'lent' ? 'They owe you this money.' : 'You owe them this money.'}
       </ThemedText>
 
-      <TextInput
+      <FocusInput
         style={inputStyle}
         value={person}
         onChangeText={(text) => {
@@ -225,7 +225,7 @@ function LoanForm({ loan, person: startPerson, notify, onDone }: FormProps) {
         </ScrollView>
       )}
 
-      <TextInput
+      <FocusInput
         style={inputStyle}
         value={amount}
         onChangeText={(text) => {
@@ -237,7 +237,7 @@ function LoanForm({ loan, person: startPerson, notify, onDone }: FormProps) {
         placeholderTextColor={theme.textSecondary}
         accessibilityLabel="Loan amount"
       />
-      <TextInput
+      <FocusInput
         style={inputStyle}
         value={note}
         onChangeText={setNote}

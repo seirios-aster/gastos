@@ -1,5 +1,6 @@
 import { View, type ViewProps } from 'react-native';
 
+import { FrostLayer } from '@/components/frost-layer';
 import { ThemeColor } from '@/constants/theme';
 import { useGlass } from '@/hooks/use-glass';
 import { useTheme } from '@/hooks/use-theme';
@@ -8,9 +9,19 @@ export type ThemedViewProps = ViewProps & {
   lightColor?: string;
   darkColor?: string;
   type?: ThemeColor;
+  /** Frost what lies behind this card (a real blur). Use it on big cards, not on every row of a list. */
+  blur?: boolean;
 };
 
-export function ThemedView({ style, lightColor, darkColor, type, ...otherProps }: ThemedViewProps) {
+export function ThemedView({
+  style,
+  lightColor,
+  darkColor,
+  type,
+  blur = false,
+  children,
+  ...otherProps
+}: ThemedViewProps) {
   const theme = useTheme();
   const glass = useGlass();
 
@@ -21,9 +32,12 @@ export function ThemedView({ style, lightColor, darkColor, type, ...otherProps }
       style={[
         { backgroundColor: theme[type ?? 'background'] },
         type === 'backgroundElement' && glass.card,
+        blur && { overflow: 'hidden', isolation: 'isolate' },
         style,
       ]}
-      {...otherProps}
-    />
+      {...otherProps}>
+      {blur ? <FrostLayer /> : null}
+      {children}
+    </View>
   );
 }

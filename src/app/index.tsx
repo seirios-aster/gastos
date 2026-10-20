@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { FocusInput, useFocusStyle } from '@/components/focus-input';
 import { BudgetProgress } from '@/components/budget-progress';
 import { Button } from '@/components/button';
 import { ActionSheet } from '@/components/action-sheet';
@@ -18,7 +19,7 @@ import { ExpenseRow } from '@/components/expense-row';
 import { ExpenseSheet } from '@/components/expense-sheet';
 import { FieldError } from '@/components/field-error';
 import { confirmDeleteExpenses, info } from '@/components/notices';
-import { GlowBackground } from '@/components/glow-background';
+import { GlassScreen } from '@/components/glass-screen';
 import { HeaderActions } from '@/components/header-actions';
 import { SelectionBar } from '@/components/selection-bar';
 import { SummaryCard } from '@/components/summary-card';
@@ -26,6 +27,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import { useExpenses } from '@/context/expenses-context';
+import { useInputStyle } from '@/hooks/use-input-style';
 import { useNow } from '@/hooks/use-now';
 import { useSelection } from '@/hooks/use-selection';
 import { useSheetNotice } from '@/hooks/use-sheet-notice';
@@ -43,6 +45,9 @@ import { formatMoney, parseAmountToCents } from '@/lib/money';
 
 export default function TodayScreen() {
   const theme = useTheme();
+  const inputStyle = useInputStyle();
+  const [amountFocused, setAmountFocused] = useState(false);
+  const amountFocus = useFocusStyle(amountFocused);
   const now = useNow();
   const {
     expenses,
@@ -116,8 +121,7 @@ export default function TodayScreen() {
   }
 
   return (
-    <ThemedView style={styles.container}>
-      <GlowBackground />
+    <GlassScreen style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         <KeyboardAvoidingView
           style={styles.flex}
@@ -150,8 +154,9 @@ export default function TodayScreen() {
               />
             </SummaryCard>
 
-            <ThemedView type="backgroundElement" style={styles.addCard}>
-              <View style={styles.amountRow}>
+            <ThemedView type="backgroundElement" blur style={styles.addCard}>
+              {/* The whole amount row is a field (a recessed well), so it reads as somewhere to type. */}
+              <View style={[styles.amountRow, inputStyle, styles.amountField, amountFocus]}>
                 {currency ? <ThemedText style={styles.amountSymbol}>{currency}</ThemedText> : null}
                 <TextInput
                   style={[
@@ -168,14 +173,13 @@ export default function TodayScreen() {
                   placeholder="0.00"
                   placeholderTextColor={theme.textSecondary}
                   accessibilityLabel="Amount"
+                  onFocus={() => setAmountFocused(true)}
+                  onBlur={() => setAmountFocused(false)}
                 />
               </View>
               {invalid && <FieldError>Enter an amount greater than 0</FieldError>}
-              <TextInput
-                style={[
-                  styles.noteInput,
-                  { color: theme.text, backgroundColor: theme.backgroundSelected },
-                ]}
+              <FocusInput
+                style={[inputStyle, styles.noteInput]}
                 value={title}
                 onChangeText={setTitle}
                 placeholder="Note (optional)"
@@ -227,7 +231,7 @@ export default function TodayScreen() {
 
       <ExpenseSheet expense={editing} onClose={() => setEditing(null)} />
       <ActionSheet {...sheetProps} />
-    </ThemedView>
+    </GlassScreen>
   );
 }
 
@@ -253,13 +257,9 @@ const styles = StyleSheet.create({
   },
   amountRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
   amountSymbol: { fontSize: 32, lineHeight: 40, fontWeight: '600' },
+  amountField: { paddingVertical: Spacing.one },
   amountInput: { flex: 1, minWidth: 0, fontSize: 32, paddingVertical: Spacing.one },
-  noteInput: {
-    borderRadius: Radius.control,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.mid,
-    fontSize: 16,
-  },
+  noteInput: {},
   list: { gap: Spacing.two },
   empty: { textAlign: 'center', paddingVertical: Spacing.four },
 });

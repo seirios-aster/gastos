@@ -5,10 +5,10 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  TextInput,
   View,
 } from 'react-native';
 
+import { FocusInput } from '@/components/focus-input';
 import { ActionSheet, type SheetNotice } from '@/components/action-sheet';
 import { Button } from '@/components/button';
 import { CategoryChips } from '@/components/category-chips';
@@ -243,7 +243,7 @@ function RecurringForm({ item, template, notify, onDone, onAdded }: FormProps) {
           />
         </>
       )}
-      <TextInput
+      <FocusInput
         style={inputStyle}
         value={amount}
         onChangeText={(text) => {
@@ -255,7 +255,7 @@ function RecurringForm({ item, template, notify, onDone, onAdded }: FormProps) {
         placeholderTextColor={theme.textSecondary}
         accessibilityLabel="Recurring amount"
       />
-      <TextInput
+      <FocusInput
         style={inputStyle}
         value={title}
         onChangeText={setTitle}
@@ -305,7 +305,7 @@ function RecurringForm({ item, template, notify, onDone, onAdded }: FormProps) {
       ) : (
         <View style={styles.monthDayRow}>
           <ThemedText type="small">Day of the month</ThemedText>
-          <TextInput
+          <FocusInput
             style={[inputStyle, styles.monthDayInput]}
             value={monthDay}
             onChangeText={(text) => {

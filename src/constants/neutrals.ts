@@ -24,6 +24,9 @@ export type Surfaces = {
   /** Bars and toasts that float over content: almost solid, so what is under them cannot blur their text. */
   toast: string;
   fieldBorder: string;
+  /** Text fields: a darker (dark) or tinted (light) well sunk into the card, so they read as inputs. */
+  field: string;
+  fieldInset: string;
 };
 
 const DARK_SURFACES: Surfaces = {
@@ -36,11 +39,13 @@ const DARK_SURFACES: Surfaces = {
   innerGlow: '#FFFFFF1A',
   shadow: '#00000073',
   toast: '#10172AF2',
-  fieldBorder: '#8C93A3',
+  fieldBorder: '#9AA2B3',
+  field: '#00000059',
+  fieldInset: '#000000A6',
 };
 
 const LIGHT_SURFACES: Surfaces = {
-  background: '#EAF1FB',
+  background: '#EFF1F7',
   backgroundElement: '#FFFFFFB8',
   backgroundSelected: '#1E3C6E1F',
   edge: '#FFFFFFE6',
@@ -50,6 +55,8 @@ const LIGHT_SURFACES: Surfaces = {
   shadow: '#1E3C6E33',
   toast: '#F6F9FFF2',
   fieldBorder: '#6B7280',
+  field: '#1E3C6E1A',
+  fieldInset: '#1E3C6E40',
 };
 
 export const Neutrals = {

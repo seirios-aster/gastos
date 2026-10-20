@@ -1,7 +1,11 @@
 import { Neutrals, surfacesFor } from './neutrals';
 
-/** The app's main color: sky blue. A readable shade for each theme is derived from it. */
-export const DEFAULT_ACCENT = '#6FB6FF';
+/**
+ * The accent is a cool near-white: glass UIs take their light from white edges and labels, not from
+ * one brand color. A readable shade for each theme is derived from it (in light mode it becomes a
+ * dark slate, since a pale color cannot carry white text). The colors in the glow do not follow it.
+ */
+export const DEFAULT_ACCENT = '#EEF2F8';
 
 /** Everything in the theme that follows the accent. */
 export type AccentSet = {
@@ -10,13 +14,13 @@ export type AccentSet = {
   onAccent: string;
   /** The accent at 12% (light) or 24% (dark) over the screen: the selected-tab pill, a selected row. */
   accentSoft: string;
-  /** The big number card: the accent as a see-through tint (#rrggbbaa) fading from heroFrom to heroTo. */
+  /** The big number card: the same see-through tint as other cards (#rrggbbaa). */
   heroFrom: string;
   heroTo: string;
   /** Text on the number card: white in dark mode, dark navy in light mode. */
   onHero: string;
   onHeroMuted: string;
-  /** The main action button: a stronger see-through tint of the accent, and its text. */
+  /** The main action button: glass like the rest, with the accent as its label color. */
   primaryFill: string;
   onPrimary: string;
   /** The accent at 12% (light) or 24% (dark) alpha, as #rrggbbaa: the press ripple on a tab. */
@@ -156,11 +160,11 @@ export function deriveAccent(base: string): AccentColors {
   });
 
   /**
-   * The five glow colors: the accent's own hue and four neighbours on the colour wheel. Each is
+   * The five glow colors: violet, teal, rose, blue and amber, whatever the accent is. Each is
    * dimmed (dark) or lightened (light) until secondary text still reads on it at full strength,
    * with a card and a field laid over it.
    */
-  const GLOW_HUES = [0, 55, -70, 130, 25];
+  const GLOW_HUES = [265, 175, 335, 215, 35];
   const glows = (
     start: number,
     step: number,
@@ -169,7 +173,7 @@ export function deriveAccent(base: string): AccentColors {
     textSecondary: string
   ) =>
     GLOW_HUES.map((shift, i) => {
-      const hex = search((h + shift + 360) % 360, Math.min(s, 0.85), start, step, (candidate) => {
+      const hex = search(shift, 0.75, start, step, (candidate) => {
         const screen = solid(`${candidate}${alpha[i]}`, surfaces.background);
         const card = solid(surfaces.backgroundElement, screen);
         const field = solid(surfaces.backgroundSelected, card);
@@ -180,46 +184,37 @@ export function deriveAccent(base: string): AccentColors {
   const darkGlows = glows(0.45, -STEP, ['5C', '4D', '40', '38', '33'], darkS, dark.textSecondary);
   const lightGlows = glows(0.8, STEP, ['99', '85', '70', '66', '5C'], lightS, light.textSecondary);
 
-  /**
-   * A see-through tint of the accent for the number card and the main button, kept just strong
-   * enough to feel like glass and dark (or pale) enough that `text` reads on it over every glow.
-   */
-  const tint = (
+  /** The accent, nudged until it reads as a label on the glass button over every glow. */
+  const labelOnGlass = (
+    start: string,
+    step: number,
     surfaces: typeof lightS,
     glowColors: string[],
-    text: [string, string],
-    alphas: [string, string],
-    start: number,
-    step: number
+    sat: number
   ) => {
     const screens = [surfaces.background, ...glowColors.map((glow) => solid(glow, surfaces.background))];
-    const reads = (hex: string) =>
-      alphas.every((alpha) =>
-        screens.every((screen) => {
-          const card = solid(`${hex}${alpha}`, screen);
-          return contrastRatio(text[0], card) >= 4.5 && contrastRatio(text[1], card) >= 4.5;
-        })
-      );
-    const color = search(h, Math.min(s, 0.8), start, step, reads);
-    return [`${color}${alphas[0]}`, `${color}${alphas[1]}`] as const;
+    return search(h, sat, hexToHsl(start)[2], step, (hex) =>
+      screens.every((screen) => contrastRatio(hex, solid(surfaces.backgroundSelected, screen)) >= 4.5)
+    );
   };
+  const darkLabel = labelOnGlass(darkAccent, STEP, darkS, darkGlows, s);
+  const lightLabel = labelOnGlass(lightAccent, -STEP, lightS, lightGlows, sDeep);
+
   const DARK_TEXT = { onHero: '#FFFFFF', onHeroMuted: '#E4ECF8' };
   const LIGHT_TEXT = { onHero: '#0B1B33', onHeroMuted: '#33415C' };
-  const [darkHeroFrom, darkHeroTo] = tint(darkS, darkGlows, ['#FFFFFF', '#E4ECF8'], ['4D', '29'], 0.5, -STEP);
-  const [lightHeroFrom, lightHeroTo] = tint(lightS, lightGlows, ['#0B1B33', '#33415C'], ['33', '1F'], 0.5, STEP);
-  const [darkPrimary] = tint(darkS, darkGlows, ['#FFFFFF', '#FFFFFF'], ['8C', '8C'], 0.5, -STEP);
-  const [lightPrimary] = tint(lightS, lightGlows, ['#0B1B33', '#0B1B33'], ['99', '99'], 0.55, STEP);
 
   return {
     light: {
       accent: lightAccent,
       onAccent: '#ffffff',
       accentSoft: blend(lightAccent, light.background, 0.12),
-      heroFrom: lightHeroFrom,
-      heroTo: lightHeroTo,
+      // The number card and the main button are the same glass as every other card; the accent
+      // shows in the ring round them and in the button's label, not as a color fill.
+      heroFrom: lightS.backgroundElement,
+      heroTo: lightS.backgroundElement,
       ...LIGHT_TEXT,
-      primaryFill: lightPrimary,
-      onPrimary: LIGHT_TEXT.onHero,
+      primaryFill: lightS.backgroundSelected,
+      onPrimary: lightLabel,
       ripple: `${lightAccent}1F`,
       glows: lightGlows,
     },
@@ -227,11 +222,11 @@ export function deriveAccent(base: string): AccentColors {
       accent: darkAccent,
       onAccent: '#000000',
       accentSoft: blend(darkAccent, dark.background, 0.24),
-      heroFrom: darkHeroFrom,
-      heroTo: darkHeroTo,
+      heroFrom: darkS.backgroundElement,
+      heroTo: darkS.backgroundElement,
       ...DARK_TEXT,
-      primaryFill: darkPrimary,
-      onPrimary: DARK_TEXT.onHero,
+      primaryFill: darkS.backgroundSelected,
+      onPrimary: darkLabel,
       ripple: `${darkAccent}3D`,
       glows: darkGlows,
     },

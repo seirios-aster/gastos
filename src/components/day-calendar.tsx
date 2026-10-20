@@ -33,7 +33,7 @@ export function DayCalendar({ monthTs, totals, selectedDay, now, currency, onPic
   const biggest = Math.max(0, ...totals);
 
   return (
-    <ThemedView type="backgroundElement" style={styles.card}>
+    <ThemedView type="backgroundElement" blur style={styles.card}>
       <View style={styles.week}>
         {WEEKDAYS.map((name, index) => (
           <View key={index} style={styles.cell} accessibilityElementsHidden importantForAccessibility="no">
@@ -78,7 +78,7 @@ export function DayCalendar({ monthTs, totals, selectedDay, now, currency, onPic
                       style={[
                         styles.dot,
                         spent > 0 && {
-                          backgroundColor: selected ? theme.onPrimary : theme.accent,
+                          backgroundColor: theme.accent,
                           ...dotSize(spent, biggest),
                         },
                       ]}

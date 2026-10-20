@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
-import { Pressable, SectionList, StyleSheet, TextInput, View } from 'react-native';
+import { Pressable, SectionList, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { FocusInput } from '@/components/focus-input';
 import { BarChart, type Bar } from '@/components/bar-chart';
 import { BudgetProgress } from '@/components/budget-progress';
 import { DayCalendar } from '@/components/day-calendar';
@@ -9,7 +10,7 @@ import { ActionSheet } from '@/components/action-sheet';
 import { ExpenseRow } from '@/components/expense-row';
 import { ExpenseSheet } from '@/components/expense-sheet';
 import { Segmented } from '@/components/segmented';
-import { GlowBackground } from '@/components/glow-background';
+import { GlassScreen } from '@/components/glass-screen';
 import { HeaderActions } from '@/components/header-actions';
 import { confirmDeleteExpenses, info } from '@/components/notices';
 import { SelectionBar } from '@/components/selection-bar';
@@ -18,6 +19,7 @@ import { Numeric, ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Radius, Spacing, Touch } from '@/constants/theme';
 import { useExpenses } from '@/context/expenses-context';
+import { useInputStyle } from '@/hooks/use-input-style';
 import { useNow } from '@/hooks/use-now';
 import { useSelection } from '@/hooks/use-selection';
 import { useSheetNotice } from '@/hooks/use-sheet-notice';
@@ -54,6 +56,7 @@ const DAY_LABELS = new Set([1, 8, 15, 22, 29]);
 
 export default function HistoryScreen() {
   const theme = useTheme();
+  const inputStyle = useInputStyle();
   const now = useNow();
   const { expenses, categories, currency, budgetCents, deleteExpenses } = useExpenses();
   const { notify, sheetProps } = useSheetNotice();
@@ -152,33 +155,7 @@ export default function HistoryScreen() {
         <HeaderActions />
       </View>
 
-      <View style={styles.searchRow}>
-        <TextInput
-          style={[styles.search, { color: theme.text, backgroundColor: theme.backgroundElement }]}
-          value={query}
-          onChangeText={setQuery}
-          placeholder="Search notes, categories, amounts"
-          placeholderTextColor={theme.textSecondary}
-          returnKeyType="search"
-          autoCorrect={false}
-          accessibilityLabel="Search expenses"
-        />
-        {searching && (
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => setQuery('')}
-            style={({ pressed }) => [styles.clear, pressed && styles.pressed]}>
-            <ThemedText type="linkPrimary">Clear</ThemedText>
-          </Pressable>
-        )}
-      </View>
-
-      {searching ? (
-        <ThemedText type="small" themeColor="textSecondary">
-          {shown.length} {shown.length === 1 ? 'result' : 'results'} across all months ·{' '}
-          {formatMoney(sumCents(shown), currency)}
-        </ThemedText>
-      ) : (
+      {!searching && (
         <>
           <ThemedView type="backgroundElement" style={styles.monthRow}>
             <Pressable
@@ -216,7 +193,7 @@ export default function HistoryScreen() {
 
           {/* Nothing to chart before the very first expense; a month with none still shows it. */}
           {expenses.length > 0 && (
-          <ThemedView type="backgroundElement" style={styles.card}>
+          <ThemedView type="backgroundElement" blur style={styles.card}>
             <View style={styles.cardTop}>
               <ThemedText type="smallBold">Spending</ThemedText>
               <View style={styles.toggle}>
@@ -251,7 +228,7 @@ export default function HistoryScreen() {
           )}
 
           {breakdown.length > 0 && (
-            <ThemedView type="backgroundElement" style={styles.card}>
+            <ThemedView type="backgroundElement" blur style={styles.card}>
               <ThemedText type="smallBold">By category</ThemedText>
               {breakdown.map(({ category, totalCents, share }) => {
                 const selected = category.id === activeFilter;
@@ -290,7 +267,39 @@ export default function HistoryScreen() {
               })}
             </ThemedView>
           )}
+        </>
+      )}
 
+      {/* The search sits between the month's overview and the calendar: both are ways to find an
+          expense. It is always in the same place in the tree, so the keyboard stays up while typing. */}
+      <View style={styles.searchRow}>
+        <FocusInput
+          style={[inputStyle, styles.search]}
+          value={query}
+          onChangeText={setQuery}
+          placeholder="Search notes, categories, amounts"
+          placeholderTextColor={theme.textSecondary}
+          returnKeyType="search"
+          autoCorrect={false}
+          accessibilityLabel="Search expenses"
+        />
+        {searching && (
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => setQuery('')}
+            style={({ pressed }) => [styles.clear, pressed && styles.pressed]}>
+            <ThemedText type="linkPrimary">Clear</ThemedText>
+          </Pressable>
+        )}
+      </View>
+
+      {searching ? (
+        <ThemedText type="small" themeColor="textSecondary">
+          {shown.length} {shown.length === 1 ? 'result' : 'results'} across all months ·{' '}
+          {formatMoney(sumCents(shown), currency)}
+        </ThemedText>
+      ) : (
+        <>
           <DayCalendar
             monthTs={monthTs}
             totals={dayTotals}
@@ -301,7 +310,7 @@ export default function HistoryScreen() {
           />
 
           {day !== null && dayBreakdown.length > 0 && (
-            <ThemedView type="backgroundElement" style={styles.card}>
+            <ThemedView type="backgroundElement" blur style={styles.card}>
               <View style={styles.cardTop}>
                 <ThemedText type="smallBold">{dayLabel(dayOfMonth(monthTs, day), now)}</ThemedText>
                 <ThemedText type="smallBold" style={Numeric}>
@@ -342,8 +351,7 @@ export default function HistoryScreen() {
   }
 
   return (
-    <ThemedView style={styles.container}>
-      <GlowBackground />
+    <GlassScreen style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         <SectionList
           sections={sections}
@@ -407,7 +415,7 @@ export default function HistoryScreen() {
 
       <ExpenseSheet expense={editing} onClose={() => setEditing(null)} />
       <ActionSheet {...sheetProps} />
-    </ThemedView>
+    </GlassScreen>
   );
 }
 
@@ -423,13 +431,7 @@ const styles = StyleSheet.create({
   titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   searchRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
   clear: { minWidth: Touch.min, minHeight: Touch.min, alignItems: 'center', justifyContent: 'center' },
-  search: {
-    flex: 1,
-    borderRadius: Radius.row,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.mid,
-    fontSize: 16,
-  },
+  search: { flex: 1 },
   monthRow: {
     flexDirection: 'row',
     alignItems: 'center',

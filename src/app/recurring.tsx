@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ActionSheet } from '@/components/action-sheet';
 import { Button } from '@/components/button';
-import { GlowBackground } from '@/components/glow-background';
+import { GlassScreen } from '@/components/glass-screen';
 import { HeaderActions } from '@/components/header-actions';
 import { confirmStopRecurring, info } from '@/components/notices';
 import { TEST_SENT, addedToday, notificationsOff } from '@/components/recurring/notices';
@@ -15,7 +15,6 @@ import { UpcomingCard } from '@/components/recurring/upcoming-card';
 import { SelectionBar } from '@/components/selection-bar';
 import { SummaryCard } from '@/components/summary-card';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing, Touch } from '@/constants/theme';
 import { useExpenses } from '@/context/expenses-context';
 import { useNow } from '@/hooks/use-now';
@@ -72,8 +71,7 @@ export default function RecurringScreen() {
   }
 
   return (
-    <ThemedView style={styles.container}>
-      <GlowBackground />
+    <GlassScreen style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         <ScrollView contentContainerStyle={styles.content}>
           <View style={styles.header}>
@@ -162,7 +160,7 @@ export default function RecurringScreen() {
         }}
       />
       <ActionSheet {...sheetProps} />
-    </ThemedView>
+    </GlassScreen>
   );
 }
 
