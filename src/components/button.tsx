@@ -42,19 +42,24 @@ export function Button({
       onPress={onPress}
       style={({ pressed }) => [
         styles.button,
-        { backgroundColor: primary ? theme.accent : theme.backgroundElement },
+        { backgroundColor: primary ? theme.primaryFill : theme.backgroundElement },
         // On the glass look the quieter buttons get the same thin ring as cards.
-        !primary &&
-          theme.edge !== '#00000000' && {
-            boxShadow: [{ offsetX: 0, offsetY: 0, blurRadius: 0, spreadDistance: 1, color: theme.edge, inset: true }],
-          },
+        theme.edge !== '#00000000' && {
+          boxShadow: primary
+            ? [
+                { offsetX: 0, offsetY: 0, blurRadius: 0, spreadDistance: 1, color: theme.edge, inset: true },
+                // A soft glow in the accent color under the button, so it still reads as the main action.
+                { offsetX: 0, offsetY: 6, blurRadius: 18, color: `${theme.accent}59` },
+              ]
+            : [{ offsetX: 0, offsetY: 0, blurRadius: 0, spreadDistance: 1, color: theme.edge, inset: true }],
+        },
         disabled && styles.disabled,
         pressed && styles.pressed,
         style,
       ]}>
       <ThemedText
         type="smallBold"
-        themeColor={primary ? 'onAccent' : variant === 'danger' ? 'danger' : 'text'}>
+        themeColor={primary ? 'onPrimary' : variant === 'danger' ? 'danger' : 'text'}>
         {label}
       </ThemedText>
     </Pressable>

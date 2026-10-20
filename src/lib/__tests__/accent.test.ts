@@ -127,6 +127,12 @@ describe('glass glow', () => {
               );
             }
           }
+          // The main button is a stronger tint over the screen, glow included.
+          const button = solid(c.primaryFill, screen);
+          assert.ok(
+            contrastRatio(c.onPrimary, button) >= 4.5,
+            `${scheme} ${pick}: onPrimary on the button ${button} (glow ${glow})`
+          );
           // The number card is a tint over the screen, glow included.
           for (const end of [c.heroFrom, c.heroTo]) {
             const hero = solid(end, screen);
