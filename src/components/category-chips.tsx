@@ -4,6 +4,7 @@ import { Pressable, ScrollView, StyleSheet } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing, Touch } from '@/constants/theme';
 import { useExpenses } from '@/context/expenses-context';
+import { useGlassRing } from '@/hooks/use-glass-ring';
 import { useTheme } from '@/hooks/use-theme';
 import { tick } from '@/lib/haptics';
 
@@ -20,6 +21,7 @@ type Props = {
 
 export function CategoryChips({ value, onChange, bleed = 0 }: Props) {
   const theme = useTheme();
+  const ring = useGlassRing();
   const { categories } = useExpenses();
   const scrollRef = useRef<ScrollView>(null);
   const positions = useRef<Record<string, number>>({});
@@ -63,6 +65,7 @@ export function CategoryChips({ value, onChange, bleed = 0 }: Props) {
             style={({ pressed }) => [
               styles.chip,
               { backgroundColor: selected ? theme.accent : theme.backgroundSelected },
+              !selected && ring,
               pressed && styles.pressed,
             ]}>
             <ThemedText type="small">{category.emoji}</ThemedText>
