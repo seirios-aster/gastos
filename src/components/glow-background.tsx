@@ -1,13 +1,6 @@
 import { useEffect, useState } from 'react';
 import { AccessibilityInfo, StyleSheet, View, type ViewStyle } from 'react-native';
-import Animated, {
-  Easing,
-  cancelAnimation,
-  useAnimatedStyle,
-  useSharedValue,
-  withRepeat,
-  withTiming,
-} from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useFrameCallback, useSharedValue } from 'react-native-reanimated';
 
 import { useTheme } from '@/hooks/use-theme';
 
@@ -39,20 +32,28 @@ export const BLOBS: Blob[] = [
   { x: 0.5, y: 0.82, size: 220, dx: -36, dy: -20, seconds: 18 },
 ];
 
+/**
+ * How far along its swing a shape is (0 to 1 and back) at a moment in time. It depends only on the
+ * clock, so the shapes behind the screen and the copies the glass cards draw of them always agree.
+ */
+export function driftAmount(blob: Blob, nowMs: number): number {
+  'worklet';
+  const phase = (nowMs / 1000 / blob.seconds) % 2;
+  const along = phase <= 1 ? phase : 2 - phase;
+  return 0.5 - 0.5 * Math.cos(Math.PI * along);
+}
+
 function GlowBlob({ blob, color, still }: { blob: Blob; color: string; still: boolean }) {
   const t = useSharedValue(0);
 
+  const frame = useFrameCallback(() => {
+    t.set(driftAmount(blob, Date.now()));
+  }, false);
+
   useEffect(() => {
-    if (still) {
-      cancelAnimation(t);
-      t.set(0);
-      return;
-    }
-    t.set(
-      withRepeat(withTiming(1, { duration: blob.seconds * 1000, easing: Easing.inOut(Easing.sin) }), -1, true)
-    );
-    return () => cancelAnimation(t);
-  }, [blob.seconds, still, t]);
+    frame.setActive(!still);
+    if (still) t.set(0);
+  }, [frame, still, t]);
 
   // A slow drift, so the glow behind the glass is alive without drawing the eye.
   const drift = useAnimatedStyle(() => ({
