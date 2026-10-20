@@ -2,7 +2,7 @@ import { BlurTargetView } from 'expo-blur';
 import { createContext, useRef, type RefObject } from 'react';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
-import { GlowBackground } from '@/components/glow-background';
+import { Backdrop } from '@/components/backdrop';
 import { useTheme } from '@/hooks/use-theme';
 
 /**
@@ -25,7 +25,7 @@ export function GlassScreen({ style, children }: Props) {
     <BlurTargetContext.Provider value={target}>
       <View style={[{ backgroundColor: theme.background }, style]}>
         <BlurTargetView ref={target} pointerEvents="none" style={StyleSheet.absoluteFill}>
-          <GlowBackground />
+          <Backdrop />
         </BlurTargetView>
         {children}
       </View>
