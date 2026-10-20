@@ -20,10 +20,12 @@ import Animated, {
   useAnimatedRef,
   useDerivedValue,
   useFrameCallback,
+  useReducedMotion,
   useSharedValue,
+  type SharedValue,
 } from 'react-native-reanimated';
 
-import { BLOBS } from '@/components/glow-background';
+import { BLOBS, driftAmount, type Blob } from '@/components/glow-background';
 import { useTheme } from '@/hooks/use-theme';
 import { useBackground } from '@/lib/background-preference';
 
@@ -100,6 +102,34 @@ function loadPhoto(uri: string, version: number): SkImage | null {
   return image;
 }
 
+/** One of the screen's colored shapes, drifting exactly where the real one is. */
+function LiquidBlob({
+  blob,
+  color,
+  width,
+  height,
+  clock,
+  still,
+}: {
+  blob: Blob;
+  color: string;
+  width: number;
+  height: number;
+  clock: SharedValue<number>;
+  still: boolean;
+}) {
+  const r = blob.size / 2;
+  const clear = `${color.slice(0, 7)}00`;
+  const cx = useDerivedValue(() => blob.x * width + (still ? 0 : blob.dx * driftAmount(blob, clock.get())));
+  const cy = useDerivedValue(() => blob.y * height + (still ? 0 : blob.dy * driftAmount(blob, clock.get())));
+  const center = useDerivedValue(() => vec(cx.get(), cy.get()));
+  return (
+    <Circle cx={cx} cy={cy} r={r}>
+      <RadialGradient c={center} r={r} colors={[color, color, clear]} positions={[0, 0.86, 1]} />
+    </Circle>
+  );
+}
+
 type Props = {
   radius: number;
   /** The card's tint: drawn over the bent picture, like the color of the glass itself. */
@@ -125,6 +155,9 @@ export function LiquidLayer({ radius, tintFrom, tintTo, openBottom = false }: Pr
   // Where this card is on the screen right now. It is read every frame on the UI thread, so the
   // backdrop drawn inside stays fixed to the screen while the card scrolls over it.
   const layer = useAnimatedRef<Animated.View>();
+  // The same clock the real shapes follow, so the copies drawn here drift in step with them.
+  const still = useReducedMotion();
+  const clock = useSharedValue(0);
   const left = useSharedValue(0);
   const top = useSharedValue(0);
   useFrameCallback(() => {
@@ -133,6 +166,7 @@ export function LiquidLayer({ radius, tintFrom, tintTo, openBottom = false }: Pr
       left.set(at.pageX);
       top.set(at.pageY);
     }
+    clock.set(Date.now());
   });
   const toScreen = useDerivedValue(() => [{ translateX: -left.get() }, { translateY: -top.get() }]);
 
@@ -167,23 +201,17 @@ export function LiquidLayer({ radius, tintFrom, tintTo, openBottom = false }: Pr
               {photo ? (
                 <SkiaImage image={photo} x={0} y={0} width={screen.width} height={screen.height} fit="cover" />
               ) : (
-                BLOBS.map((blob, i) => {
-                  const r = blob.size / 2;
-                  const cx = blob.x * screen.width;
-                  const cy = blob.y * screen.height;
-                  const color = colors[i % colors.length];
-                  const clear = `${color.slice(0, 7)}00`;
-                  return (
-                    <Circle key={i} cx={cx} cy={cy} r={r}>
-                      <RadialGradient
-                        c={vec(cx, cy)}
-                        r={r}
-                        colors={[color, color, clear]}
-                        positions={[0, 0.86, 1]}
-                      />
-                    </Circle>
-                  );
-                })
+                BLOBS.map((blob, i) => (
+                  <LiquidBlob
+                    key={i}
+                    blob={blob}
+                    color={colors[i % colors.length]}
+                    width={screen.width}
+                    height={screen.height}
+                    clock={clock}
+                    still={still}
+                  />
+                ))
               )}
             </Group>
             {photo ? (
