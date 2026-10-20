@@ -31,7 +31,8 @@ export function FrostLayer() {
       // Only phones on Android 12 or newer blur efficiently; older ones keep the tint.
       blurMethod="dimezisBlurViewSdk31Plus"
       pointerEvents="none"
-      style={StyleSheet.absoluteFill}
+      // Behind the panel's content (on the web an absolute layer would otherwise paint over inputs).
+      style={[StyleSheet.absoluteFill, { zIndex: -1 }]}
     />
   );
 }

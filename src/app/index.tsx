@@ -26,6 +26,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import { useExpenses } from '@/context/expenses-context';
+import { useInputStyle } from '@/hooks/use-input-style';
 import { useNow } from '@/hooks/use-now';
 import { useSelection } from '@/hooks/use-selection';
 import { useSheetNotice } from '@/hooks/use-sheet-notice';
@@ -43,6 +44,7 @@ import { formatMoney, parseAmountToCents } from '@/lib/money';
 
 export default function TodayScreen() {
   const theme = useTheme();
+  const inputStyle = useInputStyle();
   const now = useNow();
   const {
     expenses,
@@ -150,7 +152,8 @@ export default function TodayScreen() {
             </SummaryCard>
 
             <ThemedView type="backgroundElement" blur style={styles.addCard}>
-              <View style={styles.amountRow}>
+              {/* The whole amount row is a field (a recessed well), so it reads as somewhere to type. */}
+              <View style={[styles.amountRow, inputStyle, styles.amountField]}>
                 {currency ? <ThemedText style={styles.amountSymbol}>{currency}</ThemedText> : null}
                 <TextInput
                   style={[
@@ -171,10 +174,7 @@ export default function TodayScreen() {
               </View>
               {invalid && <FieldError>Enter an amount greater than 0</FieldError>}
               <TextInput
-                style={[
-                  styles.noteInput,
-                  { color: theme.text, backgroundColor: theme.backgroundSelected },
-                ]}
+                style={[inputStyle, styles.noteInput]}
                 value={title}
                 onChangeText={setTitle}
                 placeholder="Note (optional)"
@@ -252,13 +252,9 @@ const styles = StyleSheet.create({
   },
   amountRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
   amountSymbol: { fontSize: 32, lineHeight: 40, fontWeight: '600' },
+  amountField: { paddingVertical: Spacing.one },
   amountInput: { flex: 1, minWidth: 0, fontSize: 32, paddingVertical: Spacing.one },
-  noteInput: {
-    borderRadius: Radius.control,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.mid,
-    fontSize: 16,
-  },
+  noteInput: {},
   list: { gap: Spacing.two },
   empty: { textAlign: 'center', paddingVertical: Spacing.four },
 });

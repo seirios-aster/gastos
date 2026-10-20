@@ -32,7 +32,7 @@ export function ThemedView({
       style={[
         { backgroundColor: theme[type ?? 'background'] },
         type === 'backgroundElement' && glass.card,
-        blur && { overflow: 'hidden' },
+        blur && { overflow: 'hidden', isolation: 'isolate' },
         style,
       ]}
       {...otherProps}>

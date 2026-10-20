@@ -18,6 +18,7 @@ import { Numeric, ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Radius, Spacing, Touch } from '@/constants/theme';
 import { useExpenses } from '@/context/expenses-context';
+import { useInputStyle } from '@/hooks/use-input-style';
 import { useNow } from '@/hooks/use-now';
 import { useSelection } from '@/hooks/use-selection';
 import { useSheetNotice } from '@/hooks/use-sheet-notice';
@@ -54,6 +55,7 @@ const DAY_LABELS = new Set([1, 8, 15, 22, 29]);
 
 export default function HistoryScreen() {
   const theme = useTheme();
+  const inputStyle = useInputStyle();
   const now = useNow();
   const { expenses, categories, currency, budgetCents, deleteExpenses } = useExpenses();
   const { notify, sheetProps } = useSheetNotice();
@@ -154,7 +156,7 @@ export default function HistoryScreen() {
 
       <View style={styles.searchRow}>
         <TextInput
-          style={[styles.search, { color: theme.text, backgroundColor: theme.backgroundElement }]}
+          style={[inputStyle, styles.search]}
           value={query}
           onChangeText={setQuery}
           placeholder="Search notes, categories, amounts"
@@ -422,13 +424,7 @@ const styles = StyleSheet.create({
   titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   searchRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
   clear: { minWidth: Touch.min, minHeight: Touch.min, alignItems: 'center', justifyContent: 'center' },
-  search: {
-    flex: 1,
-    borderRadius: Radius.row,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.mid,
-    fontSize: 16,
-  },
+  search: { flex: 1 },
   monthRow: {
     flexDirection: 'row',
     alignItems: 'center',

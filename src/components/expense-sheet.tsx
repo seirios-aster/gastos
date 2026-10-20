@@ -19,6 +19,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Radius, Spacing, Touch } from '@/constants/theme';
 import { useExpenses } from '@/context/expenses-context';
+import { useInputStyle } from '@/hooks/use-input-style';
 import { useNow } from '@/hooks/use-now';
 import { useSheetNotice } from '@/hooks/use-sheet-notice';
 import { useTheme } from '@/hooks/use-theme';
@@ -56,10 +57,8 @@ function EditForm({ expense, onClose }: { expense: Expense; onClose: () => void 
   const now = useNow();
   const canGoLater = startOfDay(addDays(createdAt, 1)) <= startOfDay(now);
 
-  const inputStyle = [
-    styles.input,
-    { color: theme.text, backgroundColor: theme.backgroundElement },
-  ];
+  const fieldLook = useInputStyle();
+  const inputStyle = [fieldLook, styles.input];
 
   async function save() {
     if (saving.current) return;

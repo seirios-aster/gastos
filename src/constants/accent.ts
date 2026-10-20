@@ -10,13 +10,13 @@ export type AccentSet = {
   onAccent: string;
   /** The accent at 12% (light) or 24% (dark) over the screen: the selected-tab pill, a selected row. */
   accentSoft: string;
-  /** The big number card: the accent as a see-through tint (#rrggbbaa) fading from heroFrom to heroTo. */
+  /** The big number card: the same see-through tint as other cards (#rrggbbaa). */
   heroFrom: string;
   heroTo: string;
   /** Text on the number card: white in dark mode, dark navy in light mode. */
   onHero: string;
   onHeroMuted: string;
-  /** The main action button: a stronger see-through tint of the accent, and its text. */
+  /** The main action button: glass like the rest, with the accent as its label color. */
   primaryFill: string;
   onPrimary: string;
   /** The accent at 12% (light) or 24% (dark) alpha, as #rrggbbaa: the press ripple on a tab. */
@@ -180,46 +180,37 @@ export function deriveAccent(base: string): AccentColors {
   const darkGlows = glows(0.45, -STEP, ['5C', '4D', '40', '38', '33'], darkS, dark.textSecondary);
   const lightGlows = glows(0.8, STEP, ['99', '85', '70', '66', '5C'], lightS, light.textSecondary);
 
-  /**
-   * A see-through tint of the accent for the number card and the main button, kept just strong
-   * enough to feel like glass and dark (or pale) enough that `text` reads on it over every glow.
-   */
-  const tint = (
+  /** The accent, nudged until it reads as a label on the glass button over every glow. */
+  const labelOnGlass = (
+    start: string,
+    step: number,
     surfaces: typeof lightS,
     glowColors: string[],
-    text: [string, string],
-    alphas: [string, string],
-    start: number,
-    step: number
+    sat: number
   ) => {
     const screens = [surfaces.background, ...glowColors.map((glow) => solid(glow, surfaces.background))];
-    const reads = (hex: string) =>
-      alphas.every((alpha) =>
-        screens.every((screen) => {
-          const card = solid(`${hex}${alpha}`, screen);
-          return contrastRatio(text[0], card) >= 4.5 && contrastRatio(text[1], card) >= 4.5;
-        })
-      );
-    const color = search(h, Math.min(s, 0.8), start, step, reads);
-    return [`${color}${alphas[0]}`, `${color}${alphas[1]}`] as const;
+    return search(h, sat, hexToHsl(start)[2], step, (hex) =>
+      screens.every((screen) => contrastRatio(hex, solid(surfaces.backgroundSelected, screen)) >= 4.5)
+    );
   };
+  const darkLabel = labelOnGlass(darkAccent, STEP, darkS, darkGlows, s);
+  const lightLabel = labelOnGlass(lightAccent, -STEP, lightS, lightGlows, sDeep);
+
   const DARK_TEXT = { onHero: '#FFFFFF', onHeroMuted: '#E4ECF8' };
   const LIGHT_TEXT = { onHero: '#0B1B33', onHeroMuted: '#33415C' };
-  const [darkHeroFrom, darkHeroTo] = tint(darkS, darkGlows, ['#FFFFFF', '#E4ECF8'], ['4D', '29'], 0.5, -STEP);
-  const [lightHeroFrom, lightHeroTo] = tint(lightS, lightGlows, ['#0B1B33', '#33415C'], ['33', '1F'], 0.5, STEP);
-  const [darkPrimary] = tint(darkS, darkGlows, ['#FFFFFF', '#FFFFFF'], ['8C', '8C'], 0.5, -STEP);
-  const [lightPrimary] = tint(lightS, lightGlows, ['#0B1B33', '#0B1B33'], ['99', '99'], 0.55, STEP);
 
   return {
     light: {
       accent: lightAccent,
       onAccent: '#ffffff',
       accentSoft: blend(lightAccent, light.background, 0.12),
-      heroFrom: lightHeroFrom,
-      heroTo: lightHeroTo,
+      // The number card and the main button are the same glass as every other card; the accent
+      // shows in the ring round them and in the button's label, not as a color fill.
+      heroFrom: lightS.backgroundElement,
+      heroTo: lightS.backgroundElement,
       ...LIGHT_TEXT,
-      primaryFill: lightPrimary,
-      onPrimary: LIGHT_TEXT.onHero,
+      primaryFill: lightS.backgroundSelected,
+      onPrimary: lightLabel,
       ripple: `${lightAccent}1F`,
       glows: lightGlows,
     },
@@ -227,11 +218,11 @@ export function deriveAccent(base: string): AccentColors {
       accent: darkAccent,
       onAccent: '#000000',
       accentSoft: blend(darkAccent, dark.background, 0.24),
-      heroFrom: darkHeroFrom,
-      heroTo: darkHeroTo,
+      heroFrom: darkS.backgroundElement,
+      heroTo: darkS.backgroundElement,
       ...DARK_TEXT,
-      primaryFill: darkPrimary,
-      onPrimary: DARK_TEXT.onHero,
+      primaryFill: darkS.backgroundSelected,
+      onPrimary: darkLabel,
       ripple: `${darkAccent}3D`,
       glows: darkGlows,
     },

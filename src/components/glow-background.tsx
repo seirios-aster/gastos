@@ -28,11 +28,11 @@ type Blob = {
 // Five soft-edged shapes of color. They are what frosted panels blur, so they need a defined
 // edge (a flat glow would blur into nothing). They sit around and behind where cards are.
 const BLOBS: Blob[] = [
-  { x: 0.12, y: 0.09, size: 300, dx: 36, dy: 28, seconds: 14 },
-  { x: 0.92, y: 0.3, size: 280, dx: -32, dy: 36, seconds: 17 },
-  { x: 0.1, y: 0.62, size: 300, dx: 30, dy: -30, seconds: 19 },
-  { x: 0.9, y: 0.86, size: 270, dx: -28, dy: -24, seconds: 16 },
-  { x: 0.55, y: 0.46, size: 220, dx: 40, dy: 32, seconds: 22 },
+  { x: 0.02, y: 0.04, size: 280, dx: 34, dy: 26, seconds: 14 },
+  { x: 1.0, y: 0.26, size: 260, dx: -30, dy: 34, seconds: 17 },
+  { x: 0.0, y: 0.6, size: 280, dx: 28, dy: -28, seconds: 19 },
+  { x: 1.0, y: 0.84, size: 260, dx: -26, dy: -22, seconds: 16 },
+  { x: 0.5, y: 0.5, size: 200, dx: 38, dy: 30, seconds: 22 },
 ];
 
 function GlowBlob({ blob, color, still }: { blob: Blob; color: string; still: boolean }) {

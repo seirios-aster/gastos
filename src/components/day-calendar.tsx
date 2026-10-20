@@ -78,7 +78,7 @@ export function DayCalendar({ monthTs, totals, selectedDay, now, currency, onPic
                       style={[
                         styles.dot,
                         spent > 0 && {
-                          backgroundColor: selected ? theme.onPrimary : theme.accent,
+                          backgroundColor: theme.accent,
                           ...dotSize(spent, biggest),
                         },
                       ]}
