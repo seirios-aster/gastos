@@ -129,8 +129,8 @@ export function ColorSection() {
             accessibilityLabel="Look"
             options={[
               { value: 'glass', label: 'Glass' },
+              { value: 'sheet', label: 'Sheet' },
               { value: 'navy', label: 'Navy' },
-              { value: 'slate', label: 'Slate' },
             ]}
             value={tone}
             onChange={setDarkTone}

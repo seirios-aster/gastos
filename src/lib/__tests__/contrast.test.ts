@@ -8,7 +8,13 @@ import { Colors as Palettes } from '../../constants/colors';
 function resolved(scheme: 'light' | 'dark') {
   const c = Palettes[scheme];
   const element = solid(c.backgroundElement, c.background);
-  return { ...c, backgroundElement: element, backgroundSelected: solid(c.backgroundSelected, element) };
+  return {
+    ...c,
+    backgroundElement: element,
+    backgroundSelected: solid(c.backgroundSelected, element),
+    heroFrom: solid(c.heroFrom, c.background),
+    heroTo: solid(c.heroTo, c.background),
+  };
 }
 const Colors = { light: resolved('light'), dark: resolved('dark') };
 

@@ -53,7 +53,14 @@ describe('colour helpers', () => {
 function paletteFor(scheme: 'light' | 'dark', accent: string, tone: DarkToneName = 'glass') {
   const c = rawPalette(scheme, accent, tone);
   const element = solid(c.backgroundElement, c.background);
-  return { ...c, backgroundElement: element, backgroundSelected: solid(c.backgroundSelected, element) };
+  return {
+    ...c,
+    backgroundElement: element,
+    backgroundSelected: solid(c.backgroundSelected, element),
+    // The see-through number card, as it looks over the plain screen (the glow is tested below).
+    heroFrom: solid(c.heroFrom, c.background),
+    heroTo: solid(c.heroTo, c.background),
+  };
 }
 
 const CASES: ['light' | 'dark', DarkToneName][] = [
@@ -104,7 +111,7 @@ describe('dark tones', () => {
 
 describe('glass glow', () => {
   it('keeps text readable even at the brightest point of a glow', () => {
-    for (const [scheme, tone] of [['dark', 'glass'], ['light', 'glass']] as const) {
+    for (const [scheme, tone] of [['dark', 'glass'], ['light', 'glass'], ['dark', 'sheet']] as const) {
       for (const pick of PICKS) {
         const c = rawPalette(scheme, pick, tone);
         for (const glow of [c.glowA, c.glowB, c.glowC]) {
@@ -117,6 +124,16 @@ describe('glass glow', () => {
               assert.ok(
                 contrastRatio(c[name], surface) >= 4.5,
                 `${scheme} ${pick}: ${name} on ${surface} (glow ${glow})`
+              );
+            }
+          }
+          // The number card is a tint over the screen, glow included.
+          for (const end of [c.heroFrom, c.heroTo]) {
+            const hero = solid(end, screen);
+            for (const name of ['onHero', 'onHeroMuted'] as const) {
+              assert.ok(
+                contrastRatio(c[name], hero) >= 4.5,
+                `${scheme} ${pick}: ${name} on the number card ${hero} (glow ${glow})`
               );
             }
           }
