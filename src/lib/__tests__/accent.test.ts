@@ -3,6 +3,7 @@ import { describe, it } from 'node:test';
 
 import { DEFAULT_ACCENT, blend, contrastRatio, deriveAccent, hexToHsl, hslToHex, isHex } from '../../constants/accent';
 import { paletteFor } from '../../constants/colors';
+import { DARK_TONES, type DarkToneName } from '../../constants/neutrals';
 
 /** A spread of picks: every 20 degrees of hue, grey to vivid, near-black to near-white. */
 const PICKS: string[] = [DEFAULT_ACCENT, '#000000', '#ffffff', '#808080', '#FFFF00', '#00FFFF'];
@@ -48,11 +49,16 @@ describe('colour helpers', () => {
   });
 });
 
+const CASES: ['light' | 'dark', DarkToneName][] = [
+  ['light', 'navy'],
+  ...(Object.keys(DARK_TONES) as DarkToneName[]).map((tone): ['dark', DarkToneName] => ['dark', tone]),
+];
+
 describe('any chosen colour stays readable', () => {
-  for (const scheme of ['light', 'dark'] as const) {
-    it(`${scheme}: every pair passes the same checks as the default palette`, () => {
+  for (const [scheme, tone] of CASES) {
+    it(`${scheme === 'dark' ? `dark (${tone})` : 'light'}: every pair passes the same checks as the default palette`, () => {
       for (const pick of PICKS) {
-        const c = paletteFor(scheme, pick);
+        const c = paletteFor(scheme, pick, tone);
         const surfaces = [c.background, c.backgroundElement, c.backgroundSelected];
         const label = `${scheme} ${pick} -> ${c.accent}`;
 
@@ -69,6 +75,20 @@ describe('any chosen colour stays readable', () => {
         }
         const bar = blend(c.accent, c.backgroundElement, 0.8);
         assert.ok(contrastRatio(bar, c.backgroundElement) >= 3, `${label}: chart bars`);
+      }
+    });
+  }
+});
+
+describe('dark tones', () => {
+  for (const tone of Object.keys(DARK_TONES) as DarkToneName[]) {
+    it(`${tone}: text, secondary text, danger and warning read on every surface`, () => {
+      const c = paletteFor('dark', DEFAULT_ACCENT, tone);
+      for (const surface of [c.background, c.backgroundElement, c.backgroundSelected]) {
+        for (const name of ['text', 'textSecondary', 'danger', 'warning'] as const) {
+          assert.ok(contrastRatio(c[name], surface) >= 4.5, `${tone}: ${name} on ${surface}`);
+        }
+        assert.ok(contrastRatio(c.fieldBorder, surface) >= 3, `${tone}: field border on ${surface}`);
       }
     });
   }

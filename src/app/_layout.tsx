@@ -10,7 +10,9 @@ import { ThemeTransitionProvider } from '@/components/theme-transition';
 import { UndoToast } from '@/components/undo-toast';
 import { ExpensesProvider, useExpenses } from '@/context/expenses-context';
 import { themeFor } from '@/hooks/use-theme';
+import type { DarkToneName } from '@/constants/neutrals';
 import { useAccent } from '@/lib/accent-preference';
+import { useDarkTone } from '@/lib/dark-tone-preference';
 import { migrate } from '@/lib/db';
 import { configureReminders } from '@/lib/reminders';
 import { applySavedTheme } from '@/lib/theme-preference';
@@ -21,8 +23,8 @@ void configureReminders();
 
 // The navigation themes paint a gray behind every screen (rgb(242,242,242) light, rgb(1,1,1) dark).
 // Use the app's own background so nothing gray shows while the theme changes or a tab switches.
-function navTheme(scheme: 'light' | 'dark', accent: string) {
-  const colors = themeFor(scheme, accent);
+function navTheme(scheme: 'light' | 'dark', accent: string, tone: DarkToneName) {
+  const colors = themeFor(scheme, accent, tone);
   const base = scheme === 'dark' ? DarkTheme : DefaultTheme;
   return {
     ...base,
@@ -39,8 +41,9 @@ function ReadyGate({ children }: { children: React.ReactNode }) {
 export default function TabLayout() {
   const colorScheme = useColorScheme();
   const accent = useAccent();
+  const tone = useDarkTone();
   return (
-    <ThemeProvider value={navTheme(colorScheme === 'dark' ? 'dark' : 'light', accent)}>
+    <ThemeProvider value={navTheme(colorScheme === 'dark' ? 'dark' : 'light', accent, tone)}>
       <SQLiteProvider databaseName="gastos.db" onInit={migrate}>
         <ExpensesProvider>
           <AnimatedSplashOverlay />
