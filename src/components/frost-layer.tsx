@@ -8,7 +8,7 @@ import { BlurTargetContext } from '@/components/glass-screen';
  * Set to false to go back to plain see-through tints with no blur, if blur ever feels slow on a
  * phone. Everything else keeps working.
  */
-export const BLUR_ENABLED = true;
+export const BLUR_ENABLED = false;
 
 /** How strongly the shapes behind a panel are blurred (1 to 100). */
 const INTENSITY = 55;
