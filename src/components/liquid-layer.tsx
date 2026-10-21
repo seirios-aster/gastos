@@ -13,6 +13,7 @@ import {
   vec,
 } from '@shopify/react-native-skia';
 import { File } from 'expo-file-system';
+import { useIsFocused } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { StyleSheet, useWindowDimensions } from 'react-native';
 import Animated, {
@@ -173,7 +174,9 @@ export function LiquidLayer({ radius, tintFrom, tintTo, openBottom = false }: Pr
     clock.set(Date.now());
   }, false);
   const drawing = LIQUID_GLASS && glass && !!SOURCE && !(background.uri && !photo);
-  const ready = drawing && size !== null;
+  // Tabs you are not looking at stay mounted but are not on screen, and cannot be measured.
+  const focused = useIsFocused();
+  const ready = drawing && size !== null && focused;
   useEffect(() => {
     frame.setActive(ready);
   }, [frame, ready]);
