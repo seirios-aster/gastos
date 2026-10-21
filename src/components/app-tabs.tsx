@@ -1,10 +1,10 @@
 import { Tabs, TabList, TabSlot, TabTrigger, type TabListProps, type TabTriggerSlotProps } from 'expo-router/ui';
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, type RefObject } from 'react';
 import { Image, Pressable, StyleSheet, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring, type SharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { LiquidSurface } from '@/components/liquid-layer';
+import { LiveGlass } from '@/components/live-glass';
 import { ThemedText } from '@/components/themed-text';
 import { Radius } from '@/constants/theme';
 import { useExpenses } from '@/context/expenses-context';
@@ -52,6 +52,10 @@ const MARGIN = 16;
 const LIFT = 8;
 
 type Icons = (typeof ICONS)[keyof typeof ICONS];
+
+/** What the glass bar looks through at: the screens' content, its size, and whether a finger is scrolling it. */
+type ContentInfo = { ref: RefObject<View | null>; width: number; height: number; live: boolean };
+const ContentContext = createContext<ContentInfo | null>(null);
 
 /** The slide of the thumb, shared with every tab so the chosen one can move it. */
 const BarContext = createContext<SharedValue<number> | null>(null);
@@ -109,7 +113,9 @@ function GlassBar({ children }: TabListProps) {
   const isGlass = useIsGlass();
   const insets = useSafeAreaInsets();
   const position = useSharedValue(0);
-  const [width, setWidth] = useState(0);
+  const [box, setBox] = useState({ x: 0, y: 0, w: 0, h: 0 });
+  const content = useContext(ContentContext);
+  const width = box.w;
 
   const count = 4;
   const itemWidth = width > 0 ? (width - PADDING * 2) / count : 0;
@@ -120,7 +126,10 @@ function GlassBar({ children }: TabListProps) {
     <BarContext.Provider value={position}>
       <View
         accessibilityRole="tablist"
-        onLayout={(event) => setWidth(event.nativeEvent.layout.width)}
+        onLayout={(event) => {
+          const { x, y, width: w, height: h } = event.nativeEvent.layout;
+          setBox({ x, y, w, h });
+        }}
         style={[
           styles.bar,
           { bottom: insets.bottom + LIFT },
@@ -130,14 +139,22 @@ function GlassBar({ children }: TabListProps) {
             ? [{ backgroundColor: `${theme.background}4D` }, glass.card]
             : { backgroundColor: theme.backgroundElement, borderWidth: 1, borderColor: theme.backgroundSelected },
         ]}>
-        {/* The whole bar is the bent glass: the background curves along its rounded edge. */}
+        {/* Glass that bends whatever scrolls underneath the bar. */}
         <View pointerEvents="none" style={styles.glassLayer}>
-          <LiquidSurface
-            active={isGlass}
-            radius={BAR_HEIGHT / 2}
-            tintFrom={theme.backgroundElement}
-            tintTo={theme.backgroundElement}
-          />
+          {isGlass && content ? (
+            <LiveGlass
+              content={content.ref}
+              contentWidth={content.width}
+              contentHeight={content.height}
+              left={box.x}
+              top={box.y}
+              width={box.w}
+              height={box.h}
+              radius={BAR_HEIGHT / 2}
+              live={content.live}
+              tint={theme.backgroundElement}
+            />
+          ) : null}
         </View>
         {itemWidth > 0 ? (
           <Animated.View
@@ -162,9 +179,37 @@ export default function AppTabs() {
   // Items due today are logged the moment the app opens, so this is really tomorrow through day 3.
   const soon = dueSoonCount(recurring, now, SOON_DAYS);
 
+  // The content the glass bar looks through at, and whether a finger is scrolling it right now.
+  const content = useRef<View | null>(null);
+  const [size, setSize] = useState({ width: 0, height: 0 });
+  const [live, setLive] = useState(false);
+  const idle = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const info: ContentInfo = { ref: content, width: size.width, height: size.height, live };
+
   return (
     <Tabs>
-      <TabSlot style={styles.slot} />
+      <ContentContext.Provider value={info}>
+      <View
+        ref={content}
+        collapsable={false}
+        style={styles.slot}
+        onLayout={(event) => setSize(event.nativeEvent.layout)}
+        // Touches from the screens bubble up here: while one is down (and a moment after, for the
+        // momentum of a fling) the glass looks at the screen as fast as it can.
+        onTouchStart={() => {
+          clearTimeout(idle.current);
+          setLive(true);
+        }}
+        onTouchEnd={() => {
+          clearTimeout(idle.current);
+          idle.current = setTimeout(() => setLive(false), 1500);
+        }}
+        onTouchCancel={() => {
+          clearTimeout(idle.current);
+          idle.current = setTimeout(() => setLive(false), 1500);
+        }}>
+        <TabSlot style={styles.slot} />
+      </View>
       <TabList asChild>
         <GlassBar>
           <TabTrigger name="index" href="/" asChild>
@@ -188,6 +233,7 @@ export default function AppTabs() {
           </TabTrigger>
         </GlassBar>
       </TabList>
+      </ContentContext.Provider>
     </Tabs>
   );
 }

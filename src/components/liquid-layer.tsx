@@ -42,7 +42,7 @@ export const LIQUID_GLASS = false;
 // further in, so the colors behind appear to curve around the rim. Red, green and blue are bent by
 // slightly different amounts (the faint color fringe real glass has), and a thin bright line
 // follows the very edge.
-const SOURCE = Skia.RuntimeEffect.Make(`
+export const SOURCE = Skia.RuntimeEffect.Make(`
 uniform shader image;
 uniform float2 size;
 uniform float radius;
@@ -202,7 +202,7 @@ export function LiquidSurface({
   const toScreen = useDerivedValue(() => [{ translateX: -left.get() }, { translateY: -top.get() }]);
 
   // Chosen a photo but it could not be read: keep the plain tint.
-  if (!drawing) return null;
+  if (!drawing || !SOURCE) return null;
 
   const colors = [theme.glowA, theme.glowB, theme.glowC, theme.glowD, theme.glowE];
 
