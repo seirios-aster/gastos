@@ -32,7 +32,7 @@ import { useNow } from '@/hooks/use-now';
 import { useSelection } from '@/hooks/use-selection';
 import { useSheetNotice } from '@/hooks/use-sheet-notice';
 import { useTheme } from '@/hooks/use-theme';
-import { addDays, longDateLabel } from '@/lib/dates';
+import { addDays } from '@/lib/dates';
 import {
   MAX_NOTE_LENGTH,
   expensesInMonth,
@@ -131,14 +131,9 @@ export default function TodayScreen() {
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag">
             <View style={styles.header}>
-              <View style={styles.titles}>
-                <ThemedText type="small" themeColor="textSecondary">
-                  {longDateLabel(now)}
-                </ThemedText>
-                <ThemedText type="subtitle" accessibilityRole="header">
-                  Today
-                </ThemedText>
-              </View>
+              <ThemedText type="subtitle" accessibilityRole="header">
+                Today
+              </ThemedText>
               <HeaderActions />
             </View>
 
@@ -245,8 +240,6 @@ const styles = StyleSheet.create({
     paddingBottom: BottomTabInset + Spacing.five,
     gap: Spacing.three,
   },
-  // The title block may shrink and wrap, so the buttons beside it never get pushed off the edge.
-  titles: { flexShrink: 1 },
   header: {
     flexDirection: 'row',
     alignItems: 'center',

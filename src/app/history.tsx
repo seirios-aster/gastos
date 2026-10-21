@@ -157,6 +157,22 @@ export default function HistoryScreen() {
 
       {!searching && (
         <>
+          <SummaryCard
+            label={`Spent in ${monthLabel(monthTs)}`}
+            amount={formatMoney(monthTotal, currency)}
+            footer={
+              `${monthExpenses.length} ${monthExpenses.length === 1 ? 'expense' : 'expenses'}` +
+              (projected === null ? '' : ` · On pace for ${formatMoney(projected, currency)}`)
+            }>
+            <BudgetProgress
+              spentCents={monthTotal}
+              budgetCents={budgetCents}
+              currency={currency}
+              allowanceNow={isCurrentMonth ? now : undefined}
+            />
+          </SummaryCard>
+
+          {/* Below the number card, so the title and the card sit in the same place on every tab. */}
           <ThemedView type="backgroundElement" style={styles.monthRow}>
             <Pressable
               accessibilityRole="button"
@@ -175,21 +191,6 @@ export default function HistoryScreen() {
               <ThemedText style={[styles.arrow, !canGoNext && styles.disabled]}>›</ThemedText>
             </Pressable>
           </ThemedView>
-
-          <SummaryCard
-            label={`Spent in ${monthLabel(monthTs)}`}
-            amount={formatMoney(monthTotal, currency)}
-            footer={
-              `${monthExpenses.length} ${monthExpenses.length === 1 ? 'expense' : 'expenses'}` +
-              (projected === null ? '' : ` · On pace for ${formatMoney(projected, currency)}`)
-            }>
-            <BudgetProgress
-              spentCents={monthTotal}
-              budgetCents={budgetCents}
-              currency={currency}
-              allowanceNow={isCurrentMonth ? now : undefined}
-            />
-          </SummaryCard>
 
           {/* Nothing to chart before the very first expense; a month with none still shows it. */}
           {expenses.length > 0 && (

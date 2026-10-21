@@ -75,14 +75,9 @@ export default function RecurringScreen() {
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         <ScrollView contentContainerStyle={styles.content}>
           <View style={styles.header}>
-            <View style={styles.titles}>
-              <ThemedText type="small" themeColor="textSecondary">
-                Logged for you on the due day
-              </ThemedText>
-              <ThemedText type="subtitle" accessibilityRole="header">
-                Recurring
-              </ThemedText>
-            </View>
+            <ThemedText type="subtitle" accessibilityRole="header">
+              Recurring
+            </ThemedText>
             <HeaderActions />
           </View>
 
@@ -173,8 +168,6 @@ const styles = StyleSheet.create({
     paddingBottom: BottomTabInset + Spacing.five,
     gap: Spacing.three,
   },
-  // The title block may shrink and wrap, so the buttons beside it never get pushed off the edge.
-  titles: { flexShrink: 1 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   list: { gap: Spacing.two },
   link: { minHeight: Touch.min, alignItems: 'center', justifyContent: 'center' },
