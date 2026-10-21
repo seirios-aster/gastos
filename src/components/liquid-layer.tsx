@@ -13,7 +13,7 @@ import {
   vec,
 } from '@shopify/react-native-skia';
 import { File } from 'expo-file-system';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { StyleSheet, useWindowDimensions } from 'react-native';
 import Animated, {
   measure,
@@ -162,18 +162,25 @@ export function LiquidLayer({ radius, tintFrom, tintTo, openBottom = false }: Pr
   const clock = useSharedValue(0);
   const left = useSharedValue(0);
   const top = useSharedValue(0);
-  useFrameCallback(() => {
+  // Only runs while the layer is really on screen: in the plain look nothing is drawn, so there is
+  // no view to measure (measuring a missing view is an error every frame).
+  const frame = useFrameCallback(() => {
     const at = measure(layer);
     if (at) {
       left.set(at.pageX);
       top.set(at.pageY);
     }
     clock.set(Date.now());
-  });
+  }, false);
+  const drawing = LIQUID_GLASS && glass && !!SOURCE && !(background.uri && !photo);
+  const ready = drawing && size !== null;
+  useEffect(() => {
+    frame.setActive(ready);
+  }, [frame, ready]);
   const toScreen = useDerivedValue(() => [{ translateX: -left.get() }, { translateY: -top.get() }]);
 
   // Chosen a photo but it could not be read: keep the plain tint.
-  if (!LIQUID_GLASS || !glass || !SOURCE || (background.uri && !photo)) return null;
+  if (!drawing) return null;
 
   const colors = [theme.glowA, theme.glowB, theme.glowC, theme.glowD, theme.glowE];
 
