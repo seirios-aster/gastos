@@ -125,7 +125,9 @@ function GlassBar({ children }: TabListProps) {
           styles.bar,
           { bottom: insets.bottom + LIFT },
           isGlass
-            ? [{ backgroundColor: theme.toast }, glass.float]
+            // See-through like the cards: a light dark wash so the labels stay readable over a busy photo,
+            // with the same ring, rims and shadow as every glass card.
+            ? [{ backgroundColor: `${theme.background}4D` }, glass.card]
             : { backgroundColor: theme.backgroundElement, borderWidth: 1, borderColor: theme.backgroundSelected },
         ]}>
         {itemWidth > 0 ? (
