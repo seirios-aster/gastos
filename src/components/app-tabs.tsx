@@ -4,6 +4,7 @@ import { Image, Pressable, StyleSheet, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring, type SharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { LiquidSurface } from '@/components/liquid-layer';
 import { ThemedText } from '@/components/themed-text';
 import { Radius } from '@/constants/theme';
 import { useExpenses } from '@/context/expenses-context';
@@ -137,8 +138,17 @@ function GlassBar({ children }: TabListProps) {
               { width: itemWidth, height: thumbHeight },
               isGlass ? [{ backgroundColor: theme.backgroundSelected }, glass.selected] : { backgroundColor: theme.accentSoft },
               thumb,
-            ]}
-          />
+            ]}>
+            {/* In Glass the thumb is a lens: the background bends along its edge as it slides. */}
+            <LiquidSurface
+              active={isGlass}
+              radius={thumbHeight / 2}
+              band={30}
+              strength={30}
+              tintFrom={theme.backgroundSelected}
+              tintTo={theme.backgroundSelected}
+            />
+          </Animated.View>
         ) : null}
         {children}
       </View>
@@ -199,6 +209,7 @@ const styles = StyleSheet.create({
     left: PADDING,
     top: PADDING,
     borderRadius: Radius.pill,
+    overflow: 'hidden',
   },
   item: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 2 },
   pressed: { opacity: 0.6 },
