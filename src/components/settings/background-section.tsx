@@ -55,6 +55,8 @@ export function BackgroundSection() {
       ) : null}
 
       <Button
+
+        icon="photo"
         label={background.uri ? 'Choose a different photo' : 'Choose a photo'}
         variant="secondary"
         onPress={() => void choose()}
@@ -77,7 +79,7 @@ export function BackgroundSection() {
             colors={[theme.backgroundSelected, theme.text]}
             onChange={(v) => setDim(MIN_DIM + v * (MAX_DIM - MIN_DIM))}
           />
-          <Button label="Back to the default background" variant="secondary" onPress={removeBackground} />
+          <Button icon="undo" label="Back to the default background" variant="secondary" onPress={removeBackground} />
         </>
       ) : null}
       <ActionSheet {...sheetProps} />

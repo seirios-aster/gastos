@@ -341,6 +341,7 @@ function RecurringForm({ item, template, notify, onDone, onAdded }: FormProps) {
       )}
       {error ? <FieldError>{error}</FieldError> : null}
       <Button
+        icon={item ? 'save' : 'add'}
         label={item ? 'Save changes' : 'Add recurring expense'}
         onPress={save}
         style={styles.primary}
@@ -348,6 +349,7 @@ function RecurringForm({ item, template, notify, onDone, onAdded }: FormProps) {
       {item && (
         <>
           <Button
+            icon={item.paused ? 'resume' : 'pause'}
             variant="secondary"
             label={item.paused ? 'Resume' : 'Pause'}
             onPress={() => void togglePause(item)}
@@ -357,7 +359,7 @@ function RecurringForm({ item, template, notify, onDone, onAdded }: FormProps) {
               Paused: nothing is logged until you resume. Resuming doesn&apos;t add the days you missed.
             </ThemedText>
           )}
-          <Button variant="danger" label="Stop repeating" onPress={() => askStop(item)} />
+          <Button icon="stop" variant="danger" label="Stop repeating" onPress={() => askStop(item)} />
         </>
       )}
     </View>

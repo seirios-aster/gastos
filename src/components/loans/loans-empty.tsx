@@ -46,7 +46,7 @@ export function LoansEmpty({ onAdd }: { onAdd: () => void }) {
         ))}
       </View>
 
-      <Button label="Add a loan" onPress={onAdd} />
+      <Button icon="add" label="Add a loan" onPress={onAdd} />
     </ThemedView>
   );
 }

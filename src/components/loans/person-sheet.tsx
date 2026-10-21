@@ -72,8 +72,8 @@ export function PersonSheet({ personKey, visible, onClose, onEditLoan, onAddLoan
           <>
             <Balance group={display} currency={currency} />
             <View style={styles.actions}>
-              <Button label="Add another loan" variant="secondary" onPress={() => onAddLoan(display.person)} />
-              {message && <Button label="Send a reminder" variant="secondary" onPress={() => void sendReminder(message)} />}
+              <Button icon="add" label="Add another loan" variant="secondary" onPress={() => onAddLoan(display.person)} />
+              {message && <Button icon="remind" label="Send a reminder" variant="secondary" onPress={() => void sendReminder(message)} />}
             </View>
             {display.loans.map((loan) => (
               <LoanCard
@@ -251,7 +251,7 @@ function LoanCard({ loan, now, currency, onEdit, notify }: CardProps) {
             accessibilityLabel="Payment amount"
             onSubmitEditing={submit}
           />
-          <Button label="Add" onPress={submit} style={styles.payButton} />
+          <Button icon="add" label="Add" onPress={submit} style={styles.payButton} />
         </View>
       )}
       {error ? <FieldError>{error}</FieldError> : null}

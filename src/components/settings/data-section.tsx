@@ -149,8 +149,9 @@ export function DataSection() {
       <Section
         title="Backup"
         hint="Your data lives only on this phone. A backup is a full copy to keep safe.">
-        <Button variant="secondary" label="Export backup" onPress={shareBackup} />
+        <Button icon="export" variant="secondary" label="Export backup" onPress={shareBackup} />
         <Button
+          icon="restore"
           variant="secondary"
           label="Restore from backup"
           expanded={restoring}
@@ -177,7 +178,7 @@ export function DataSection() {
               accessibilityLabel="Backup text"
             />
             {error ? <FieldError>{error}</FieldError> : null}
-            <Button label="Restore" onPress={confirmRestore} />
+            <Button icon="restore" label="Restore" onPress={confirmRestore} />
           </>
         )}
       </Section>
@@ -185,7 +186,7 @@ export function DataSection() {
       <Section
         title="Spreadsheet (CSV)"
         hint="A .csv file for Excel or Google Sheets. To restore, use a backup instead.">
-        <Button variant="secondary" label="Export CSV" onPress={exportCsv} />
+        <Button icon="csv" variant="secondary" label="Export CSV" onPress={exportCsv} />
       </Section>
 
       <ActionSheet
@@ -214,7 +215,7 @@ export function DataSection() {
         <Section
           title="Erase"
           hint="Deletes every expense on this phone. Categories, recurring expenses and settings are kept.">
-          <Button variant="danger" label="Erase all expenses" onPress={confirmErase} />
+          <Button icon="delete" variant="danger" label="Erase all expenses" onPress={confirmErase} />
         </Section>
       </View>
     </>

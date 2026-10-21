@@ -179,8 +179,8 @@ function EditForm({ expense, onClose }: { expense: Expense; onClose: () => void 
             </ThemedView>
           </View>
 
-          <Button label="Save changes" onPress={save} style={styles.save} />
-          <Button variant="danger" label="Delete expense" onPress={confirmDelete} />
+          <Button icon="save" label="Save changes" onPress={save} style={styles.save} />
+          <Button icon="delete" variant="danger" label="Delete expense" onPress={confirmDelete} />
         </ScrollView>
       </KeyboardAvoidingView>
     <ActionSheet {...sheetProps} />

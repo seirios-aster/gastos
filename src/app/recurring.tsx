@@ -98,7 +98,7 @@ export default function RecurringScreen() {
 
               <UpcomingCard items={recurring} now={now} />
 
-              <Button label="New recurring expense" onPress={() => setEditor({ mode: 'new' })} />
+              <Button icon="add" label="New recurring expense" onPress={() => setEditor({ mode: 'new' })} />
 
               {active.length > 0 && (
                 <View style={styles.list}>
