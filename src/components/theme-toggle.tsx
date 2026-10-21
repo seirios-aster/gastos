@@ -3,6 +3,7 @@ import { useEffect, useRef } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 
+import { LiquidLayer } from '@/components/liquid-layer';
 import { useThemeTransition } from '@/components/theme-transition';
 import { Radius } from '@/constants/theme';
 import { useGlass } from '@/hooks/use-glass';
@@ -45,8 +46,17 @@ export function ThemeToggle() {
       style={[styles.group, { backgroundColor: theme.backgroundElement, borderColor: theme.fieldBorder }, glass.chip]}>
       <Animated.View
         pointerEvents="none"
-        style={[styles.thumb, { backgroundColor: theme.backgroundSelected }, glass.selected, thumb]}
-      />
+        style={[styles.thumb, { backgroundColor: theme.backgroundSelected }, glass.selected, thumb]}>
+        {/* In Glass the thumb is a small lens: the background bends along its edge as it slides. */}
+        <LiquidLayer
+          lens
+          radius={SEGMENT / 2}
+          band={18}
+          strength={18}
+          tintFrom={theme.backgroundSelected}
+          tintTo={theme.backgroundSelected}
+        />
+      </Animated.View>
       {THEME_CHOICES.map((option) => {
         const selected = option === choice;
         return (
@@ -108,6 +118,7 @@ const styles = StyleSheet.create({
     width: SEGMENT,
     height: SEGMENT,
     borderRadius: Radius.pill,
+    overflow: 'hidden',
   },
   segment: {
     width: SEGMENT,

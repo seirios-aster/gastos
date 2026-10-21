@@ -150,10 +150,11 @@ type Props = {
  * while the card moves over it (scrolling), so the glass really looks through to the backdrop. The parent must clip to its rounded corners. Draws nothing (the parent keeps its plain
  * tint) when the switch is off, the photo cannot be read, or the shader cannot compile.
  */
-export function LiquidLayer(props: Props) {
+export function LiquidLayer({ lens = false, ...props }: Props & { lens?: boolean }) {
   // Tabs you are not looking at stay mounted but are not on screen, and cannot be measured.
   const focused = useIsFocused();
-  return <LiquidSurface {...props} active={LIQUID_GLASS && focused} />;
+  // Cards and buttons follow the LIQUID_GLASS switch (off); a small sliding lens asks for it by name.
+  return <LiquidSurface {...props} active={(LIQUID_GLASS || lens) && focused} />;
 }
 
 /**
