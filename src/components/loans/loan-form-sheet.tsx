@@ -309,8 +309,8 @@ function LoanForm({ loan, person: startPerson, notify, onDone }: FormProps) {
       )}
 
       {error ? <FieldError>{error}</FieldError> : null}
-      <Button label={loan ? 'Save changes' : 'Add loan'} onPress={save} style={styles.primary} />
-      {loan && <Button variant="danger" label="Delete loan" onPress={() => askDelete(loan)} />}
+      <Button icon={loan ? 'save' : 'add'} label={loan ? 'Save changes' : 'Add loan'} onPress={save} style={styles.primary} />
+      {loan && <Button icon="delete" variant="danger" label="Delete loan" onPress={() => askDelete(loan)} />}
     </View>
   );
 }

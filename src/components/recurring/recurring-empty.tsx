@@ -53,7 +53,7 @@ export function RecurringEmpty({ onAdd }: { onAdd: (template?: RecurringTemplate
         <TemplateChips onPick={onAdd} />
       </View>
 
-      <Button label="New recurring expense" onPress={() => onAdd()} />
+      <Button icon="add" label="New recurring expense" onPress={() => onAdd()} />
     </ThemedView>
   );
 }

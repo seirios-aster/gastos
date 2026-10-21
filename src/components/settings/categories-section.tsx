@@ -117,7 +117,7 @@ export function CategoriesSection() {
           onSubmitEditing={add}
           returnKeyType="done"
         />
-        <Button label="Add" onPress={add} />
+        <Button icon="add" label="Add" onPress={add} />
       </View>
       {error ? <FieldError>{error}</FieldError> : null}
       <ActionSheet {...sheetProps} />

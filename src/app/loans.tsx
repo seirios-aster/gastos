@@ -77,7 +77,7 @@ export default function LoansScreen() {
                 footer={summaryFooter}
               />
 
-              <Button label="New loan" onPress={() => setEditor({ mode: 'new' })} />
+              <Button icon="add" label="New loan" onPress={() => setEditor({ mode: 'new' })} />
 
               <Segmented
                 accessibilityLabel="Show"

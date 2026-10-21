@@ -190,7 +190,7 @@ export default function TodayScreen() {
                 onSubmitEditing={submit}
               />
               <CategoryChips value={category} onChange={setCategory} bleed={Spacing.three} />
-              <Button label="Add expense" onPress={submit} />
+              <Button icon="add" label="Add expense" onPress={submit} />
             </ThemedView>
 
             <View style={styles.list}>
