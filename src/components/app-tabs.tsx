@@ -187,8 +187,10 @@ export default function AppTabs() {
   const info: ContentInfo = { ref: content, width: size.width, height: size.height, live };
 
   return (
+    // The provider sits OUTSIDE Tabs: Tabs looks for its tab list among its own children and finds
+    // none if something wraps them.
+    <ContentContext.Provider value={info}>
     <Tabs>
-      <ContentContext.Provider value={info}>
       <View
         ref={content}
         collapsable={false}
@@ -233,8 +235,8 @@ export default function AppTabs() {
           </TabTrigger>
         </GlassBar>
       </TabList>
-      </ContentContext.Provider>
     </Tabs>
+    </ContentContext.Provider>
   );
 }
 
