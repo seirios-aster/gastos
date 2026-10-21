@@ -131,7 +131,7 @@ export default function TodayScreen() {
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag">
             <View style={styles.header}>
-              <View>
+              <View style={styles.titles}>
                 <ThemedText type="small" themeColor="textSecondary">
                   {longDateLabel(now)}
                 </ThemedText>
@@ -245,6 +245,8 @@ const styles = StyleSheet.create({
     paddingBottom: BottomTabInset + Spacing.five,
     gap: Spacing.three,
   },
+  // The title block may shrink and wrap, so the buttons beside it never get pushed off the edge.
+  titles: { flexShrink: 1 },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
