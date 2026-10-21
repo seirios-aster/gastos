@@ -74,16 +74,11 @@ export default function RecurringScreen() {
     <GlassScreen style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         <ScrollView contentContainerStyle={styles.content}>
-          <View>
-            <View style={styles.header}>
-              <ThemedText type="subtitle" accessibilityRole="header">
-                Recurring
-              </ThemedText>
-              <HeaderActions />
-            </View>
-            <ThemedText type="small" themeColor="textSecondary">
-              Logged for you on the due day
+          <View style={styles.header}>
+            <ThemedText type="subtitle" accessibilityRole="header">
+              Recurring
             </ThemedText>
+            <HeaderActions />
           </View>
 
           {recurring.length === 0 ? (

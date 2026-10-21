@@ -55,16 +55,11 @@ export default function LoansScreen() {
     <GlassScreen style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         <ScrollView contentContainerStyle={styles.content}>
-          <View>
-            <View style={styles.header}>
-              <ThemedText type="subtitle" accessibilityRole="header">
-                Loans
-              </ThemedText>
-              <HeaderActions />
-            </View>
-            <ThemedText type="small" themeColor="textSecondary">
-              Lent and borrowed, kept apart from spending
+          <View style={styles.header}>
+            <ThemedText type="subtitle" accessibilityRole="header">
+              Loans
             </ThemedText>
+            <HeaderActions />
           </View>
 
           {loans.length === 0 ? (

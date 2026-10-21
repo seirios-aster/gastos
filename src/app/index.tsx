@@ -32,7 +32,7 @@ import { useNow } from '@/hooks/use-now';
 import { useSelection } from '@/hooks/use-selection';
 import { useSheetNotice } from '@/hooks/use-sheet-notice';
 import { useTheme } from '@/hooks/use-theme';
-import { addDays, longDateLabel } from '@/lib/dates';
+import { addDays } from '@/lib/dates';
 import {
   MAX_NOTE_LENGTH,
   expensesInMonth,
@@ -130,16 +130,11 @@ export default function TodayScreen() {
             contentContainerStyle={styles.content}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag">
-            <View>
-              <View style={styles.header}>
-                <ThemedText type="subtitle" accessibilityRole="header">
-                  Today
-                </ThemedText>
-                <HeaderActions />
-              </View>
-              <ThemedText type="small" themeColor="textSecondary">
-                {longDateLabel(now)}
+            <View style={styles.header}>
+              <ThemedText type="subtitle" accessibilityRole="header">
+                Today
               </ThemedText>
+              <HeaderActions />
             </View>
 
             <SummaryCard
