@@ -3,7 +3,8 @@ import { useRef } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { useThemeTransition } from '@/components/theme-transition';
-import { Radius, Touch } from '@/constants/theme';
+import { Radius, Spacing } from '@/constants/theme';
+import { useGlass } from '@/hooks/use-glass';
 import { useTheme } from '@/hooks/use-theme';
 import { tick } from '@/lib/haptics';
 import { THEME_CHOICES, type ThemeChoice } from '@/lib/theme-choice';
@@ -23,17 +24,20 @@ const SYMBOLS = {
  */
 export function ThemeToggle() {
   const theme = useTheme();
+  const glass = useGlass();
   const choice = useThemeChoice();
   const { changeTheme, prepareChange, cancelPrepare } = useThemeTransition();
   const releaseTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   return (
-    <View accessibilityRole="radiogroup" accessibilityLabel="Look" style={styles.group}>
+    <View accessibilityRole="radiogroup" accessibilityLabel="Look"
+      style={[styles.group, { backgroundColor: theme.backgroundElement, borderColor: theme.fieldBorder }, glass.chip]}>
       {THEME_CHOICES.map((option) => {
         const selected = option === choice;
         return (
           <Pressable
             key={option}
+            hitSlop={{ top: 4, bottom: 4 }}
             accessibilityRole="radio"
             accessibilityLabel={LABELS[option]}
             accessibilityState={{ checked: selected }}
@@ -54,11 +58,11 @@ export function ThemeToggle() {
             }}
             style={({ pressed }) => [
               styles.segment,
-              selected && { backgroundColor: theme.backgroundSelected },
+              selected && { backgroundColor: theme.primaryFill },
               pressed && styles.pressed,
             ]}>
             <SymbolView
-              tintColor={selected ? theme.text : theme.textSecondary}
+              tintColor={selected ? theme.onPrimary : theme.textSecondary}
               name={SYMBOLS[option]}
               size={22}
             />
@@ -70,11 +74,19 @@ export function ThemeToggle() {
 }
 
 const styles = StyleSheet.create({
-  group: { flexDirection: 'row', alignItems: 'center' },
-  // 44dp tall (the touch minimum); the selected one is a pill behind the icon.
+  // One pill holding all three choices, with the chosen one raised inside it.
+  group: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 3,
+    gap: 2,
+    borderRadius: Radius.pill,
+    borderWidth: 1,
+    marginRight: Spacing.one,
+  },
   segment: {
-    minWidth: 40,
-    minHeight: Touch.min,
+    width: 40,
+    height: 36,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: Radius.pill,
