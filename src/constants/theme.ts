@@ -56,6 +56,6 @@ export const Radius = { control: 12, row: 16, card: 24, pill: 999 } as const;
 /** Smallest comfortable touch targets, in dp. */
 export const Touch = { min: 44, button: 48 } as const;
 
-/** Room screens leave at the bottom for the floating tab bar (its height, its lift and the phone's own bottom edge). */
+/** Room screens leave at the bottom for the tab bar (its height plus the phone's own bottom edge). */
 export const BottomTabInset = 112;
 export const MaxContentWidth = 800;

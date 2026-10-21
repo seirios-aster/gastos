@@ -15,7 +15,7 @@ import { dueSoonCount } from '@/lib/recurring';
 import { useIsGlass } from '@/lib/theme-preference';
 
 /**
- * The tab bar, drawn by the app instead of the phone: a floating pill near the bottom with a
+ * The tab bar, drawn by the app instead of the phone: a straight bar along the bottom edge with a
  * thumb that slides under the chosen tab. In the Glass look the thumb is bent glass (the liquid
  * layer); in Light and Dark it is a plain soft pill. Screens keep BottomTabInset of room at the
  * bottom so their last row can scroll clear of it.
@@ -48,8 +48,6 @@ const SOON_DAYS = 3;
 
 const BAR_HEIGHT = 64;
 const PADDING = 6;
-const MARGIN = 16;
-const LIFT = 8;
 
 type Icons = (typeof ICONS)[keyof typeof ICONS];
 
@@ -123,12 +121,14 @@ function GlassBar({ children }: TabListProps) {
         onLayout={(event) => setWidth(event.nativeEvent.layout.width)}
         style={[
           styles.bar,
-          { bottom: insets.bottom + LIFT },
+          // A straight bar across the whole width, down to the phone's bottom edge. The system's
+          // bottom area is part of it, so the items sit above that area.
+          { height: BAR_HEIGHT + insets.bottom, paddingBottom: PADDING + insets.bottom },
           isGlass
-            // See-through like the cards: a light dark wash so the labels stay readable over a busy photo,
-            // with the same ring, rims and shadow as every glass card.
+            // The same see-through glass as before, only straight: a light dark wash so the labels stay
+            // readable over a busy photo, with the same ring, rims and shadow as every glass card.
             ? [{ backgroundColor: `${theme.background}4D` }, glass.card]
-            : { backgroundColor: theme.backgroundElement, borderWidth: 1, borderColor: theme.backgroundSelected },
+            : { backgroundColor: theme.backgroundElement, borderTopWidth: 1, borderTopColor: theme.backgroundSelected },
         ]}>
         {itemWidth > 0 ? (
           <Animated.View
@@ -196,13 +196,13 @@ const styles = StyleSheet.create({
   slot: { flex: 1 },
   bar: {
     position: 'absolute',
-    left: MARGIN,
-    right: MARGIN,
-    height: BAR_HEIGHT,
-    padding: PADDING,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingTop: PADDING,
+    paddingHorizontal: PADDING,
     flexDirection: 'row',
     alignItems: 'stretch',
-    borderRadius: Radius.pill,
   },
   thumb: {
     position: 'absolute',
