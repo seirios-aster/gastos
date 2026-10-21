@@ -130,16 +130,16 @@ export default function TodayScreen() {
             contentContainerStyle={styles.content}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag">
-            <View style={styles.header}>
-              <View style={styles.titles}>
-                <ThemedText type="small" themeColor="textSecondary">
-                  {longDateLabel(now)}
-                </ThemedText>
+            <View>
+              <View style={styles.header}>
                 <ThemedText type="subtitle" accessibilityRole="header">
                   Today
                 </ThemedText>
+                <HeaderActions />
               </View>
-              <HeaderActions />
+              <ThemedText type="small" themeColor="textSecondary">
+                {longDateLabel(now)}
+              </ThemedText>
             </View>
 
             <SummaryCard
@@ -245,8 +245,6 @@ const styles = StyleSheet.create({
     paddingBottom: BottomTabInset + Spacing.five,
     gap: Spacing.three,
   },
-  // The title block may shrink and wrap, so the buttons beside it never get pushed off the edge.
-  titles: { flexShrink: 1 },
   header: {
     flexDirection: 'row',
     alignItems: 'center',

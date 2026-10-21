@@ -55,16 +55,16 @@ export default function LoansScreen() {
     <GlassScreen style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         <ScrollView contentContainerStyle={styles.content}>
-          <View style={styles.header}>
-            <View style={styles.titles}>
-              <ThemedText type="small" themeColor="textSecondary">
-                Lent and borrowed, kept apart from spending
-              </ThemedText>
+          <View>
+            <View style={styles.header}>
               <ThemedText type="subtitle" accessibilityRole="header">
                 Loans
               </ThemedText>
+              <HeaderActions />
             </View>
-            <HeaderActions />
+            <ThemedText type="small" themeColor="textSecondary">
+              Lent and borrowed, kept apart from spending
+            </ThemedText>
           </View>
 
           {loans.length === 0 ? (
@@ -131,8 +131,6 @@ const styles = StyleSheet.create({
     paddingBottom: BottomTabInset + Spacing.five,
     gap: Spacing.three,
   },
-  // The title block may shrink and wrap, so the buttons beside it never get pushed off the edge.
-  titles: { flexShrink: 1 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   list: { gap: Spacing.two },
   none: { textAlign: 'center', paddingVertical: Spacing.four },
