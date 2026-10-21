@@ -130,6 +130,15 @@ function GlassBar({ children }: TabListProps) {
             ? [{ backgroundColor: `${theme.background}4D` }, glass.card]
             : { backgroundColor: theme.backgroundElement, borderWidth: 1, borderColor: theme.backgroundSelected },
         ]}>
+        {/* The whole bar is the bent glass: the background curves along its rounded edge. */}
+        <View pointerEvents="none" style={styles.glassLayer}>
+          <LiquidSurface
+            active={isGlass}
+            radius={BAR_HEIGHT / 2}
+            tintFrom={theme.backgroundElement}
+            tintTo={theme.backgroundElement}
+          />
+        </View>
         {itemWidth > 0 ? (
           <Animated.View
             pointerEvents="none"
@@ -138,14 +147,8 @@ function GlassBar({ children }: TabListProps) {
               { width: itemWidth, height: thumbHeight },
               isGlass ? [{ backgroundColor: theme.backgroundSelected }, glass.selected] : { backgroundColor: theme.accentSoft },
               thumb,
-            ]}>
-            <LiquidSurface
-              active={isGlass}
-              radius={thumbHeight / 2}
-              tintFrom={theme.backgroundSelected}
-              tintTo={theme.backgroundSelected}
-            />
-          </Animated.View>
+            ]}
+          />
         ) : null}
         {children}
       </View>
@@ -201,12 +204,12 @@ const styles = StyleSheet.create({
     alignItems: 'stretch',
     borderRadius: Radius.pill,
   },
+  glassLayer: { ...StyleSheet.absoluteFill, borderRadius: Radius.pill, overflow: 'hidden' },
   thumb: {
     position: 'absolute',
     left: PADDING,
     top: PADDING,
     borderRadius: Radius.pill,
-    overflow: 'hidden',
   },
   item: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 2 },
   pressed: { opacity: 0.6 },
