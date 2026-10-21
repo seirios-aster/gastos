@@ -125,9 +125,9 @@ function GlassBar({ children }: TabListProps) {
           // bottom area is part of it, so the items sit above that area.
           { height: BAR_HEIGHT + insets.bottom, paddingBottom: PADDING + insets.bottom },
           isGlass
-            // See-through: a light dark wash so the labels stay readable over a busy photo, and a
-            // thin light line along the top edge. The chosen tab is the only glass piece.
-            ? { backgroundColor: `${theme.background}59`, borderTopWidth: 1, borderTopColor: theme.edge }
+            // The same see-through glass as before, only straight: a light dark wash so the labels stay
+            // readable over a busy photo, with the same ring, rims and shadow as every glass card.
+            ? [{ backgroundColor: `${theme.background}4D` }, glass.card]
             : { backgroundColor: theme.backgroundElement, borderTopWidth: 1, borderTopColor: theme.backgroundSelected },
         ]}>
         {itemWidth > 0 ? (
