@@ -1,9 +1,10 @@
 import { SymbolView } from 'expo-symbols';
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
+import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 
 import { useThemeTransition } from '@/components/theme-transition';
-import { Radius, Spacing } from '@/constants/theme';
+import { Radius } from '@/constants/theme';
 import { useGlass } from '@/hooks/use-glass';
 import { useTheme } from '@/hooks/use-theme';
 import { tick } from '@/lib/haptics';
@@ -14,7 +15,7 @@ const LABELS: Record<ThemeChoice, string> = { light: 'Light', dark: 'Dark', glas
 const SYMBOLS = {
   light: { ios: 'sun.max', android: 'light_mode', web: 'light_mode' },
   dark: { ios: 'moon', android: 'dark_mode', web: 'dark_mode' },
-  glass: { ios: 'drop', android: 'water_drop', web: 'water_drop' },
+  glass: { ios: 'sparkles', android: 'auto_awesome', web: 'auto_awesome' },
 } as const;
 
 /**
@@ -29,15 +30,29 @@ export function ThemeToggle() {
   const { changeTheme, prepareChange, cancelPrepare } = useThemeTransition();
   const releaseTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
+  // One thumb that glides under the chosen icon, so the three choices behave like a single switch.
+  const index = THEME_CHOICES.indexOf(choice);
+  const position = useSharedValue(index);
+  useEffect(() => {
+    position.set(withSpring(index, { damping: 18, stiffness: 260 }));
+  }, [index, position]);
+  const thumb = useAnimatedStyle(() => ({
+    transform: [{ translateX: position.get() * (SEGMENT + GAP) }],
+  }));
+
   return (
     <View accessibilityRole="radiogroup" accessibilityLabel="Look"
       style={[styles.group, { backgroundColor: theme.backgroundElement, borderColor: theme.fieldBorder }, glass.chip]}>
+      <Animated.View
+        pointerEvents="none"
+        style={[styles.thumb, { backgroundColor: theme.backgroundSelected }, glass.selected, thumb]}
+      />
       {THEME_CHOICES.map((option) => {
         const selected = option === choice;
         return (
           <Pressable
             key={option}
-            hitSlop={{ top: 4, bottom: 4 }}
+            hitSlop={{ top: 2, bottom: 2 }}
             accessibilityRole="radio"
             accessibilityLabel={LABELS[option]}
             accessibilityState={{ checked: selected }}
@@ -58,11 +73,10 @@ export function ThemeToggle() {
             }}
             style={({ pressed }) => [
               styles.segment,
-              selected && { backgroundColor: theme.primaryFill },
               pressed && styles.pressed,
             ]}>
             <SymbolView
-              tintColor={selected ? theme.onPrimary : theme.textSecondary}
+              tintColor={selected ? theme.text : theme.textSecondary}
               name={SYMBOLS[option]}
               size={22}
             />
@@ -73,20 +87,31 @@ export function ThemeToggle() {
   );
 }
 
+const SEGMENT = 40;
+const GAP = 2;
+const PADDING = 2;
+
 const styles = StyleSheet.create({
-  // One pill holding all three choices, with the chosen one raised inside it.
+  // One pill holding all three choices; the thumb slides inside it.
   group: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 3,
-    gap: 2,
+    padding: PADDING,
+    gap: GAP,
     borderRadius: Radius.pill,
     borderWidth: 1,
-    marginRight: Spacing.one,
+  },
+  thumb: {
+    position: 'absolute',
+    left: PADDING,
+    top: PADDING,
+    width: SEGMENT,
+    height: SEGMENT,
+    borderRadius: Radius.pill,
   },
   segment: {
-    width: 40,
-    height: 36,
+    width: SEGMENT,
+    height: SEGMENT,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: Radius.pill,
