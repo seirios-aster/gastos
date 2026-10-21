@@ -35,7 +35,7 @@ import { useIsGlass } from '@/lib/theme-preference';
  * Set to false to go back to the plain tinted card. The liquid look is drawn by the graphics
  * chip, and this is the one switch that turns it off everywhere.
  */
-export const LIQUID_GLASS = true;
+export const LIQUID_GLASS = false;
 
 // The bending of light at a glass edge, as a small shader. For each pixel it measures how close it
 // is to the card's rounded edge and, inside a thin band along the edge, looks at the picture a bit
