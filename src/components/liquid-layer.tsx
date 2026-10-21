@@ -147,7 +147,23 @@ type Props = {
  * while the card moves over it (scrolling), so the glass really looks through to the backdrop. The parent must clip to its rounded corners. Draws nothing (the parent keeps its plain
  * tint) when the switch is off, the photo cannot be read, or the shader cannot compile.
  */
-export function LiquidLayer({ radius, tintFrom, tintTo, openBottom = false }: Props) {
+export function LiquidLayer(props: Props) {
+  // Tabs you are not looking at stay mounted but are not on screen, and cannot be measured.
+  const focused = useIsFocused();
+  return <LiquidSurface {...props} active={LIQUID_GLASS && focused} />;
+}
+
+/**
+ * The same layer with the on/off decision made by the caller (`active`). The tab bar uses it
+ * directly: it lives outside any screen, so it has no screen focus to follow.
+ */
+export function LiquidSurface({
+  radius,
+  tintFrom,
+  tintTo,
+  openBottom = false,
+  active,
+}: Props & { active: boolean }) {
   const theme = useTheme();
   const background = useBackground();
   const glass = useIsGlass();
@@ -173,10 +189,8 @@ export function LiquidLayer({ radius, tintFrom, tintTo, openBottom = false }: Pr
     }
     clock.set(Date.now());
   }, false);
-  const drawing = LIQUID_GLASS && glass && !!SOURCE && !(background.uri && !photo);
-  // Tabs you are not looking at stay mounted but are not on screen, and cannot be measured.
-  const focused = useIsFocused();
-  const ready = drawing && size !== null && focused;
+  const drawing = active && glass && !!SOURCE && !(background.uri && !photo);
+  const ready = drawing && size !== null;
   useEffect(() => {
     frame.setActive(ready);
   }, [frame, ready]);

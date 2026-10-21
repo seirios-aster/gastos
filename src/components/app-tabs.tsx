@@ -1,9 +1,25 @@
-import { NativeTabs } from 'expo-router/unstable-native-tabs';
+import { Tabs, TabList, TabSlot, TabTrigger, type TabListProps, type TabTriggerSlotProps } from 'expo-router/ui';
+import { createContext, useContext, useEffect, useState } from 'react';
+import { Image, Pressable, StyleSheet, View } from 'react-native';
+import Animated, { useAnimatedStyle, useSharedValue, withSpring, type SharedValue } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { LiquidSurface } from '@/components/liquid-layer';
+import { ThemedText } from '@/components/themed-text';
+import { Radius } from '@/constants/theme';
 import { useExpenses } from '@/context/expenses-context';
+import { useGlass } from '@/hooks/use-glass';
 import { useNow } from '@/hooks/use-now';
 import { useTheme } from '@/hooks/use-theme';
 import { dueSoonCount } from '@/lib/recurring';
+import { useIsGlass } from '@/lib/theme-preference';
+
+/**
+ * The tab bar, drawn by the app instead of the phone: a floating pill near the bottom with a
+ * thumb that slides under the chosen tab. In the Glass look the thumb is bent glass (the liquid
+ * layer); in Light and Dark it is a plain soft pill. Screens keep BottomTabInset of room at the
+ * bottom so their last row can scroll clear of it.
+ */
 
 // Alpha-only PNGs (24dp, with @2x and @3x): the bar tints them with iconColor, so one file serves
 // both themes. Outline = idle, filled and heavier = selected, so the selected tab is not shown by
@@ -30,52 +46,181 @@ const ICONS = {
 /** The Recurring tab shows a badge when something is due within this many days. */
 const SOON_DAYS = 3;
 
-export default function AppTabs() {
+const BAR_HEIGHT = 64;
+const PADDING = 6;
+const MARGIN = 16;
+const LIFT = 8;
+
+type Icons = (typeof ICONS)[keyof typeof ICONS];
+
+/** The slide of the thumb, shared with every tab so the chosen one can move it. */
+const BarContext = createContext<SharedValue<number> | null>(null);
+
+type ItemProps = TabTriggerSlotProps & {
+  index: number;
+  label: string;
+  icons: Icons;
+  badge?: number;
+  a11yLabel?: string;
+};
+
+function TabItem({ index, label, icons, badge = 0, a11yLabel, isFocused, children: _children, ...props }: ItemProps) {
   const theme = useTheme();
+  const position = useContext(BarContext);
+  const selected = !!isFocused;
+
+  useEffect(() => {
+    if (selected) position?.set(withSpring(index, { damping: 20, stiffness: 260 }));
+  }, [selected, index, position]);
+
+  return (
+    <Pressable
+      {...props}
+      role="tab"
+      aria-selected={selected}
+      accessibilityLabel={a11yLabel ?? label}
+      style={({ pressed }) => [styles.item, pressed && styles.pressed]}>
+      <View>
+        <Image
+          source={selected ? icons.selected : icons.default}
+          style={[styles.icon, { tintColor: selected ? theme.accent : theme.textSecondary }]}
+        />
+        {badge > 0 ? (
+          <View style={[styles.badge, { backgroundColor: theme.accent }]}>
+            <ThemedText type="caption" themeColor="onAccent" style={styles.badgeText}>
+              {badge}
+            </ThemedText>
+          </View>
+        ) : null}
+      </View>
+      <ThemedText
+        type="caption"
+        themeColor={selected ? 'text' : 'textSecondary'}
+        style={selected ? styles.labelSelected : styles.label}>
+        {label}
+      </ThemedText>
+    </Pressable>
+  );
+}
+
+function GlassBar({ children }: TabListProps) {
+  const theme = useTheme();
+  const glass = useGlass();
+  const isGlass = useIsGlass();
+  const insets = useSafeAreaInsets();
+  const position = useSharedValue(0);
+  const [width, setWidth] = useState(0);
+
+  const count = 4;
+  const itemWidth = width > 0 ? (width - PADDING * 2) / count : 0;
+  const thumbHeight = BAR_HEIGHT - PADDING * 2;
+  const thumb = useAnimatedStyle(() => ({ transform: [{ translateX: position.get() * itemWidth }] }));
+
+  return (
+    <BarContext.Provider value={position}>
+      <View
+        accessibilityRole="tablist"
+        onLayout={(event) => setWidth(event.nativeEvent.layout.width)}
+        style={[
+          styles.bar,
+          { bottom: insets.bottom + LIFT },
+          isGlass
+            ? [{ backgroundColor: theme.toast }, glass.float]
+            : { backgroundColor: theme.backgroundElement, borderWidth: 1, borderColor: theme.backgroundSelected },
+        ]}>
+        {itemWidth > 0 ? (
+          <Animated.View
+            pointerEvents="none"
+            style={[
+              styles.thumb,
+              { width: itemWidth, height: thumbHeight },
+              isGlass ? [{ backgroundColor: theme.backgroundSelected }, glass.selected] : { backgroundColor: theme.accentSoft },
+              thumb,
+            ]}>
+            <LiquidSurface
+              active={isGlass}
+              radius={thumbHeight / 2}
+              tintFrom={theme.backgroundSelected}
+              tintTo={theme.backgroundSelected}
+            />
+          </Animated.View>
+        ) : null}
+        {children}
+      </View>
+    </BarContext.Provider>
+  );
+}
+
+export default function AppTabs() {
   const now = useNow();
   const { recurring } = useExpenses();
   // Items due today are logged the moment the app opens, so this is really tomorrow through day 3.
   const soon = dueSoonCount(recurring, now, SOON_DAYS);
 
   return (
-    <NativeTabs
-      backgroundColor={theme.background}
-      iconColor={{ default: theme.textSecondary, selected: theme.accent }}
-      // Android lets the selected label differ from the others only in color and size.
-      labelStyle={{
-        default: { color: theme.textSecondary, fontSize: 12, fontWeight: '600' },
-        selected: { color: theme.text, fontSize: 12 },
-      }}
-      indicatorColor={theme.accentSoft}
-      rippleColor={theme.ripple}
-      badgeBackgroundColor={theme.accent}
-      badgeTextColor={theme.onAccent}>
-      <NativeTabs.Trigger name="index">
-        <NativeTabs.Trigger.Label>Today</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon src={ICONS.today} renderingMode="template" />
-      </NativeTabs.Trigger>
-
-      <NativeTabs.Trigger name="history">
-        <NativeTabs.Trigger.Label>History</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon src={ICONS.history} renderingMode="template" />
-      </NativeTabs.Trigger>
-
-      {/* The label replaces the visible text for a screen reader, so it must still say "Recurring". */}
-      <NativeTabs.Trigger
-        name="recurring"
-        accessibilityLabel={soon > 0 ? `Recurring, ${soon} coming up` : 'Recurring'}>
-        <NativeTabs.Trigger.Label>Recurring</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon src={ICONS.recurring} renderingMode="template" />
-        {/* `hidden` is ignored when there are children, so pass none at all when nothing is coming. */}
-        <NativeTabs.Trigger.Badge hidden={soon === 0}>
-          {soon > 0 ? String(soon) : undefined}
-        </NativeTabs.Trigger.Badge>
-      </NativeTabs.Trigger>
-
-      <NativeTabs.Trigger name="loans">
-        <NativeTabs.Trigger.Label>Loans</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon src={ICONS.loans} renderingMode="template" />
-      </NativeTabs.Trigger>
-    </NativeTabs>
+    <Tabs>
+      <TabSlot style={styles.slot} />
+      <TabList asChild>
+        <GlassBar>
+          <TabTrigger name="index" href="/" asChild>
+            <TabItem index={0} label="Today" icons={ICONS.today} />
+          </TabTrigger>
+          <TabTrigger name="history" href="/history" asChild>
+            <TabItem index={1} label="History" icons={ICONS.history} />
+          </TabTrigger>
+          {/* The label replaces the visible text for a screen reader, so it must still say "Recurring". */}
+          <TabTrigger name="recurring" href="/recurring" asChild>
+            <TabItem
+              index={2}
+              label="Recurring"
+              icons={ICONS.recurring}
+              badge={soon}
+              a11yLabel={soon > 0 ? `Recurring, ${soon} coming up` : 'Recurring'}
+            />
+          </TabTrigger>
+          <TabTrigger name="loans" href="/loans" asChild>
+            <TabItem index={3} label="Loans" icons={ICONS.loans} />
+          </TabTrigger>
+        </GlassBar>
+      </TabList>
+    </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  slot: { flex: 1 },
+  bar: {
+    position: 'absolute',
+    left: MARGIN,
+    right: MARGIN,
+    height: BAR_HEIGHT,
+    padding: PADDING,
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    borderRadius: Radius.pill,
+  },
+  thumb: {
+    position: 'absolute',
+    left: PADDING,
+    top: PADDING,
+    borderRadius: Radius.pill,
+    overflow: 'hidden',
+  },
+  item: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 2 },
+  pressed: { opacity: 0.6 },
+  icon: { width: 24, height: 24 },
+  label: { fontSize: 12, fontWeight: '600' },
+  labelSelected: { fontSize: 12 },
+  badge: {
+    position: 'absolute',
+    top: -4,
+    right: -10,
+    minWidth: 16,
+    height: 16,
+    paddingHorizontal: 4,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeText: { fontSize: 10, lineHeight: 12, fontWeight: '700' },
+});
