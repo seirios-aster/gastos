@@ -1,9 +1,11 @@
+import { SymbolView } from 'expo-symbols';
 import { Modal, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { GlassScreen } from '@/components/glass-screen';
 import { ThemedText } from '@/components/themed-text';
 import { MaxContentWidth, Spacing, Touch } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 
 type Props = {
   visible: boolean;
@@ -14,6 +16,7 @@ type Props = {
 
 /** A full-height bottom sheet (iOS page sheet / Android full-screen modal) with a title bar. */
 export function Sheet({ visible, title, onClose, children }: Props) {
+  const theme = useTheme();
   return (
     <Modal
       visible={visible}
@@ -33,10 +36,15 @@ export function Sheet({ visible, title, onClose, children }: Props) {
               </ThemedText>
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel="Close"
+                accessibilityLabel="Back"
                 onPress={onClose}
                 style={({ pressed }) => [styles.close, pressed && styles.pressed]}>
-                <ThemedText type="linkPrimary">Close</ThemedText>
+                <SymbolView
+                  tintColor={theme.accent}
+                  name={{ ios: 'chevron.left', android: 'chevron_left', web: 'chevron_left' }}
+                  size={22}
+                />
+                <ThemedText type="linkPrimary">Back</ThemedText>
               </Pressable>
             </View>
             {children}
@@ -63,6 +71,8 @@ const styles = StyleSheet.create({
   close: {
     minWidth: Touch.min,
     minHeight: Touch.min,
+    flexDirection: 'row',
+    gap: Spacing.half,
     alignItems: 'center',
     justifyContent: 'center',
   },
