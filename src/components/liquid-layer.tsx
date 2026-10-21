@@ -42,7 +42,7 @@ export const LIQUID_GLASS = false;
 // further in, so the colors behind appear to curve around the rim. Red, green and blue are bent by
 // slightly different amounts (the faint color fringe real glass has), and a thin bright line
 // follows the very edge.
-export const SOURCE = Skia.RuntimeEffect.Make(`
+const SOURCE = Skia.RuntimeEffect.Make(`
 uniform shader image;
 uniform float2 size;
 uniform float radius;
