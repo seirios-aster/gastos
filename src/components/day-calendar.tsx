@@ -72,7 +72,7 @@ export function DayCalendar({ monthTs, totals, selectedDay, now, currency, onPic
                     themeColor={selected ? 'onPrimary' : pickable ? 'text' : 'textSecondary'}>
                     {day}
                   </ThemedText>
-                  {/* A fixed slot, so a bigger dot never moves the number above it. */}
+                  {/* A fixed slot at the bottom, so a bigger dot never moves the number. */}
                   <View style={styles.dotSlot}>
                     <View
                       style={[
@@ -113,9 +113,9 @@ const styles = StyleSheet.create({
     borderRadius: Touch.min / 2,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 2,
   },
-  dotSlot: { height: 9, alignItems: 'center', justifyContent: 'center' },
+  // Pinned to the bottom of the circle, so the number stays exactly in its middle.
+  dotSlot: { position: 'absolute', bottom: 3, left: 0, right: 0, height: 9, alignItems: 'center', justifyContent: 'center' },
   dot: { width: 5, height: 5, borderRadius: 3, backgroundColor: 'transparent' },
   pressed: { opacity: 0.7 },
   hint: { textAlign: 'center', paddingTop: Spacing.one },
