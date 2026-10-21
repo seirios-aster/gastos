@@ -1,6 +1,6 @@
 import { Tabs, TabList, TabSlot, TabTrigger, type TabListProps, type TabTriggerSlotProps } from 'expo-router/ui';
 import { createContext, useContext, useEffect, useState } from 'react';
-import { Image, Pressable, StyleSheet, View } from 'react-native';
+import { Image, Pressable, StyleSheet, View, type ViewStyle } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring, type SharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -125,9 +125,12 @@ function GlassBar({ children }: TabListProps) {
           // bottom area is part of it, so the items sit above that area.
           { height: BAR_HEIGHT + insets.bottom, paddingBottom: PADDING + insets.bottom },
           isGlass
-            // The same see-through glass as before, only straight: a light dark wash so the labels stay
-            // readable over a busy photo, with the same ring, rims and shadow as every glass card.
-            ? [{ backgroundColor: `${theme.background}4D` }, glass.card]
+            // See-through glass with an edge only along the top: the sides and bottom run off the screen,
+            // so a ring there would just be a line down each side. A light wash keeps the labels readable.
+            ? [
+                { backgroundColor: `${theme.background}4D`, borderTopWidth: 1, borderTopColor: theme.edge },
+                { boxShadow: [{ offsetX: 0, offsetY: 10, blurRadius: 20, color: theme.innerGlow, inset: true }] } as ViewStyle,
+              ]
             : { backgroundColor: theme.backgroundElement, borderTopWidth: 1, borderTopColor: theme.backgroundSelected },
         ]}>
         {itemWidth > 0 ? (
