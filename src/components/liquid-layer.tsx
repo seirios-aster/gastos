@@ -139,6 +139,9 @@ type Props = {
   tintTo: string;
   /** The card continues below (a budget strip), so the bottom edge is not a glass edge. */
   openBottom?: boolean;
+  /** How wide the bent band along the edge is, and how far it pulls, in dp. A slim shape wants smaller numbers. */
+  band?: number;
+  strength?: number;
 };
 
 /**
@@ -162,6 +165,8 @@ export function LiquidSurface({
   tintFrom,
   tintTo,
   openBottom = false,
+  band = 44,
+  strength = 46,
   active,
 }: Props & { active: boolean }) {
   const theme = useTheme();
@@ -217,7 +222,7 @@ export function LiquidSurface({
               <Paint>
                 <RuntimeShader
                   source={SOURCE}
-                  uniforms={{ size: [size.w, size.h + (openBottom ? 400 : 0)], radius, band: 44, strength: 46 }}
+                  uniforms={{ size: [size.w, size.h + (openBottom ? 400 : 0)], radius, band, strength }}
                 />
               </Paint>
             }>
