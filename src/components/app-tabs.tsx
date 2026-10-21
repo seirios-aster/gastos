@@ -66,6 +66,8 @@ function TabItem({ index, label, icons, badge = 0, a11yLabel, isFocused, childre
   const theme = useTheme();
   const position = useContext(BarContext);
   const selected = !!isFocused;
+  // Over glass the idle icons and labels are full white: the dimmer grey got lost against the photo.
+  const glass = useIsGlass();
 
   useEffect(() => {
     if (selected) position?.set(withSpring(index, { damping: 20, stiffness: 260 }));
@@ -81,7 +83,7 @@ function TabItem({ index, label, icons, badge = 0, a11yLabel, isFocused, childre
       <View>
         <Image
           source={selected ? icons.selected : icons.default}
-          style={[styles.icon, { tintColor: selected ? theme.accent : theme.textSecondary }]}
+          style={[styles.icon, { tintColor: selected ? theme.accent : glass ? theme.text : theme.textSecondary }]}
         />
         {badge > 0 ? (
           <View style={[styles.badge, { backgroundColor: theme.accent }]}>
@@ -93,7 +95,7 @@ function TabItem({ index, label, icons, badge = 0, a11yLabel, isFocused, childre
       </View>
       <ThemedText
         type="caption"
-        themeColor={selected ? 'text' : 'textSecondary'}
+        themeColor={selected || glass ? 'text' : 'textSecondary'}
         style={selected ? styles.labelSelected : styles.label}>
         {label}
       </ThemedText>
@@ -126,13 +128,15 @@ function GlassBar({ children }: TabListProps) {
           { height: BAR_HEIGHT + insets.bottom, paddingBottom: PADDING + insets.bottom },
           isGlass
             // See-through glass with an edge only along the top: the sides and bottom run off the screen,
-            // so a ring there would just be a line down each side. A light wash keeps the labels readable.
+            // so a ring there would just be a line down each side. A dark wash (with the card tint on top, like the
+            // number card) keeps the icons and labels readable over whatever scrolls underneath.
             ? [
-                { backgroundColor: `${theme.background}4D`, borderTopWidth: 1, borderTopColor: theme.edge },
+                { backgroundColor: `${theme.background}A6`, borderTopWidth: 1, borderTopColor: theme.edge },
                 { boxShadow: [{ offsetX: 0, offsetY: 10, blurRadius: 20, color: theme.innerGlow, inset: true }] } as ViewStyle,
               ]
             : { backgroundColor: theme.backgroundElement, borderTopWidth: 1, borderTopColor: theme.backgroundSelected },
         ]}>
+        {isGlass ? <View pointerEvents="none" style={[styles.tint, { backgroundColor: theme.backgroundElement }]} /> : null}
         {itemWidth > 0 ? (
           <Animated.View
             pointerEvents="none"
@@ -207,6 +211,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'stretch',
   },
+  tint: { ...StyleSheet.absoluteFill },
   thumb: {
     position: 'absolute',
     left: PADDING,
@@ -217,8 +222,8 @@ const styles = StyleSheet.create({
   item: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 2 },
   pressed: { opacity: 0.6 },
   icon: { width: 24, height: 24 },
-  label: { fontSize: 12, fontWeight: '600' },
-  labelSelected: { fontSize: 12 },
+  label: { fontSize: 12, fontWeight: '600', textShadowColor: '#00000099', textShadowRadius: 3, textShadowOffset: { width: 0, height: 1 } },
+  labelSelected: { fontSize: 12, textShadowColor: '#00000099', textShadowRadius: 3, textShadowOffset: { width: 0, height: 1 } },
   badge: {
     position: 'absolute',
     top: -4,
