@@ -1,4 +1,4 @@
-import { Tabs, TabList, TabSlot, TabTrigger, type TabListProps, type TabTriggerSlotProps } from 'expo-router/ui';
+import { Tabs, TabList, TabSlot, TabTrigger, defaultTabsSlotRender, type TabListProps, type TabTriggerSlotProps } from 'expo-router/ui';
 import { createContext, useContext, useEffect, useState } from 'react';
 import { Image, Pressable, StyleSheet, View, type ViewStyle } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring, type SharedValue } from 'react-native-reanimated';
@@ -164,6 +164,10 @@ function GlassBar({ children }: TabListProps) {
   );
 }
 
+/** The usual way a tab screen is drawn, except that it counts as already opened. */
+const buildAll: typeof defaultTabsSlotRender = (descriptor, options) =>
+  defaultTabsSlotRender(descriptor, { ...options, loaded: true });
+
 export default function AppTabs() {
   const theme = useTheme();
   const isGlass = useIsGlass();
@@ -179,7 +183,9 @@ export default function AppTabs() {
       <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: theme.background }]}>
         {isGlass ? <Backdrop /> : null}
       </View>
-      <TabSlot style={styles.slot} />
+      {/* Every screen is built at startup (behind the splash), not the first time its tab is opened:
+          that first build is the jump seen on a first visit. */}
+      <TabSlot style={styles.slot} renderFn={buildAll} />
       <TabList asChild>
         <GlassBar>
           <TabTrigger name="index" href="/" asChild>
