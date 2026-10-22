@@ -4,6 +4,7 @@ import { Image, Pressable, StyleSheet, View, type ViewStyle } from 'react-native
 import Animated, { useAnimatedStyle, useSharedValue, withSpring, type SharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { Backdrop } from '@/components/backdrop';
 import { LiquidSurface } from '@/components/liquid-layer';
 import { ThemedText } from '@/components/themed-text';
 import { Radius } from '@/constants/theme';
@@ -164,6 +165,8 @@ function GlassBar({ children }: TabListProps) {
 }
 
 export default function AppTabs() {
+  const theme = useTheme();
+  const isGlass = useIsGlass();
   const now = useNow();
   const { recurring } = useExpenses();
   // Items due today are logged the moment the app opens, so this is really tomorrow through day 3.
@@ -171,6 +174,11 @@ export default function AppTabs() {
 
   return (
     <Tabs>
+      {/* One backdrop behind every tab, so switching tabs never redraws it (a photo or the drifting
+          shapes redrawn per screen made the page flash). The screens themselves are see-through. */}
+      <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: theme.background }]}>
+        {isGlass ? <Backdrop /> : null}
+      </View>
       <TabSlot style={styles.slot} />
       <TabList asChild>
         <GlassBar>

@@ -12,16 +12,26 @@ import { useIsGlass } from '@/lib/theme-preference';
  */
 export const BlurTargetContext = createContext<RefObject<View | null> | null>(null);
 
-type Props = { style?: StyleProp<ViewStyle>; children: React.ReactNode };
+type Props = {
+  style?: StyleProp<ViewStyle>;
+  /**
+   * The screen lies over a backdrop drawn once for all the tabs (see AppTabs), so it draws none of its
+   * own. Sheets, which are separate windows, leave this off.
+   */
+  shared?: boolean;
+  children: React.ReactNode;
+};
 
 /**
  * A screen with the glass backdrop. The colored shapes live in a blur target at the back;
  * frosted panels on top of it (see FrostLayer) blur exactly what lies behind them.
  */
-export function GlassScreen({ style, children }: Props) {
+export function GlassScreen({ style, shared = false, children }: Props) {
   const theme = useTheme();
   const target = useRef<View | null>(null);
   const glass = useIsGlass();
+
+  if (shared) return <View style={style}>{children}</View>;
 
   // The plain look is a flat screen: no shapes behind it, nothing to see through to.
   if (!glass) return <View style={[{ backgroundColor: theme.background }, style]}>{children}</View>;

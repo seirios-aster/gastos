@@ -71,7 +71,7 @@ export default function RecurringScreen() {
   }
 
   return (
-    <GlassScreen style={styles.container}>
+    <GlassScreen shared style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         <ScrollView contentContainerStyle={styles.content}>
           <View style={styles.header}>

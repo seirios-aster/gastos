@@ -352,7 +352,7 @@ export default function HistoryScreen() {
   }
 
   return (
-    <GlassScreen style={styles.container}>
+    <GlassScreen shared style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         <SectionList
           sections={sections}
