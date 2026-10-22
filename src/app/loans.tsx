@@ -52,7 +52,7 @@ export default function LoansScreen() {
         : 'Nothing open right now';
 
   return (
-    <GlassScreen style={styles.container}>
+    <GlassScreen shared style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         <ScrollView contentContainerStyle={styles.content}>
           <View style={styles.header}>

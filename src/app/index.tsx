@@ -121,7 +121,7 @@ export default function TodayScreen() {
   }
 
   return (
-    <GlassScreen style={styles.container}>
+    <GlassScreen shared style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         <KeyboardAvoidingView
           style={styles.flex}
