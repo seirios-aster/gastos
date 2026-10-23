@@ -1,10 +1,9 @@
 import { Image } from 'expo-image';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useState } from 'react';
-import { StyleSheet, Text } from 'react-native';
+import { StyleSheet } from 'react-native';
 import Animated, {
   Easing,
-  FadeIn,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
@@ -15,8 +14,8 @@ import { useAppWarm } from '@/lib/app-warm';
 
 /** How long the splash lifts away once the app is ready. */
 const LIFT_MS = 480;
-/** It stays at least this long, so the name is readable before it leaves. */
-const MIN_SHOWN_MS = 700;
+/** It stays at least this long, so it never just blinks past. */
+const MIN_SHOWN_MS = 600;
 /** If the app is not ready by then, leave anyway: a loader must never get stuck. */
 const MAX_SHOWN_MS = 5000;
 
@@ -69,9 +68,6 @@ export function AnimatedSplashOverlay() {
       }}
       style={[styles.splashOverlay, { backgroundColor: SPLASH_BACKGROUND }, style]}>
       <Image style={styles.logo} source={require('@/assets/images/splash-icon.png')} />
-      <Animated.View entering={FadeIn.duration(200)} style={styles.nameWrap}>
-        <Text style={styles.name}>Gastos</Text>
-      </Animated.View>
     </Animated.View>
   );
 }
@@ -84,11 +80,4 @@ const styles = StyleSheet.create({
     zIndex: 1000,
   },
   logo: { width: LOGO_SIZE, height: LOGO_SIZE },
-  // Hangs below the logo without moving it, so the logo stays where the phone's splash drew it.
-  nameWrap: {
-    position: 'absolute',
-    top: '50%',
-    marginTop: LOGO_SIZE / 2 + 4,
-  },
-  name: { color: '#FFFFFF', fontSize: 28, fontWeight: '700', letterSpacing: 0.5 },
 });
