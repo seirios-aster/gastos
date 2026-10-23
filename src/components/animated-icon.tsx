@@ -1,11 +1,24 @@
 import { Image } from 'expo-image';
 import * as SplashScreen from 'expo-splash-screen';
-import { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
-import Animated, { Easing, FadeIn, Keyframe } from 'react-native-reanimated';
+import { useEffect, useState } from 'react';
+import { StyleSheet, Text } from 'react-native';
+import Animated, {
+  Easing,
+  FadeIn,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
-const DURATION = 800;
+import { useAppWarm } from '@/lib/app-warm';
+
+/** How long the splash lifts away once the app is ready. */
+const LIFT_MS = 480;
+/** It stays at least this long, so the name is readable before it leaves. */
+const MIN_SHOWN_MS = 700;
+/** If the app is not ready by then, leave anyway: a loader must never get stuck. */
+const MAX_SHOWN_MS = 5000;
 
 /** Same size as `imageWidth` in app.json, so the logo does not jump when this takes over from the phone's own splash. */
 const LOGO_SIZE = 190;
@@ -13,51 +26,53 @@ const LOGO_SIZE = 190;
 const SPLASH_BACKGROUND = '#4A9BEE';
 
 export function AnimatedSplashOverlay() {
-  const [animate, setAnimate] = useState(false);
+  const warm = useAppWarm();
   const [visible, setVisible] = useState(true);
+  const [shownLongEnough, setShownLongEnough] = useState(false);
+  const [giveUp, setGiveUp] = useState(false);
+  const lift = useSharedValue(0);
+
+  useEffect(() => {
+    const minimum = setTimeout(() => setShownLongEnough(true), MIN_SHOWN_MS);
+    const maximum = setTimeout(() => setGiveUp(true), MAX_SHOWN_MS);
+    return () => {
+      clearTimeout(minimum);
+      clearTimeout(maximum);
+    };
+  }, []);
+
+  // It acts as the loader: it stays until the app has opened every tab once (and a moment longer),
+  // then lifts away into the app.
+  const leaving = (warm && shownLongEnough) || giveUp;
+  useEffect(() => {
+    if (!leaving) return;
+    lift.set(
+      withTiming(1, { duration: LIFT_MS, easing: Easing.in(Easing.quad) }, (finished) => {
+        'worklet';
+        if (finished) scheduleOnRN(setVisible, false);
+      })
+    );
+  }, [leaving, lift]);
+
+  const style = useAnimatedStyle(() => ({
+    opacity: 1 - lift.get(),
+    transform: [{ translateY: -24 * lift.get() }],
+  }));
 
   if (!visible) return null;
 
-  // Holds still for a moment while the name fades in, then lifts away into the app.
-  const leaveKeyframe = new Keyframe({
-    0: { opacity: 1, transform: [{ translateY: 0 }] },
-    40: { opacity: 1, transform: [{ translateY: 0 }] },
-    100: {
-      opacity: 0,
-      transform: [{ translateY: -24 }],
-      easing: Easing.in(Easing.quad),
-    },
-  });
-
-  const background = SPLASH_BACKGROUND;
-  const logo = (
-    <Image style={styles.logo} source={require('@/assets/images/splash-icon.png')} />
-  );
-
-  return animate ? (
+  return (
     <Animated.View
-      entering={leaveKeyframe.duration(DURATION).withCallback((finished) => {
-        'worklet';
-        if (finished) {
-          scheduleOnRN(setVisible, false);
-        }
-      })}
-      style={[styles.splashOverlay, { backgroundColor: background }]}>
-      {logo}
+      // Once this is drawn, the phone's own splash can go: it looks the same, so nothing jumps.
+      onLayout={() => {
+        void SplashScreen.hideAsync();
+      }}
+      style={[styles.splashOverlay, { backgroundColor: SPLASH_BACKGROUND }, style]}>
+      <Image style={styles.logo} source={require('@/assets/images/splash-icon.png')} />
       <Animated.View entering={FadeIn.duration(200)} style={styles.nameWrap}>
         <Text style={styles.name}>Gastos</Text>
       </Animated.View>
     </Animated.View>
-  ) : (
-    <View
-      onLayout={() => {
-        SplashScreen.hideAsync().finally(() => {
-          setAnimate(true);
-        });
-      }}
-      style={[styles.splashOverlay, { backgroundColor: background }]}>
-      {logo}
-    </View>
   );
 }
 
