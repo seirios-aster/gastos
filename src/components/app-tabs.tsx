@@ -167,7 +167,7 @@ function GlassBar({ children }: TabListProps) {
 
 /** The tabs, in the order they are opened once at startup (Today last, so the app ends where it began). */
 const WARM_UP = ['/history', '/recurring', '/loans', '/'] as const;
-const WARM_STEP_MS = 170;
+const WARM_STEP_MS = 80;
 
 export default function AppTabs() {
   const theme = useTheme();
@@ -232,9 +232,11 @@ export default function AppTabs() {
       </TabList>
       {warming ? (
         <Animated.View
-          exiting={FadeOut.duration(220)}
-          style={[StyleSheet.absoluteFill, styles.cover, { backgroundColor: theme.background }]}
-        />
+          exiting={FadeOut.duration(180)}
+          style={[StyleSheet.absoluteFill, styles.cover, { backgroundColor: theme.background }]}>
+          {/* The same backdrop as the app, so the cover looks like the screen without its content. */}
+          {isGlass ? <Backdrop /> : null}
+        </Animated.View>
       ) : null}
     </Tabs>
   );
