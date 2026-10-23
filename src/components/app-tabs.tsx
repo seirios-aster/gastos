@@ -1,7 +1,8 @@
 import { Tabs, TabList, TabSlot, TabTrigger, type TabListProps, type TabTriggerSlotProps } from 'expo-router/ui';
+import { useRouter } from 'expo-router';
 import { createContext, useContext, useEffect, useState } from 'react';
 import { Image, Pressable, StyleSheet, View, type ViewStyle } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withSpring, type SharedValue } from 'react-native-reanimated';
+import Animated, { FadeOut, useAnimatedStyle, useSharedValue, withSpring, type SharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Backdrop } from '@/components/backdrop';
@@ -164,9 +165,35 @@ function GlassBar({ children }: TabListProps) {
   );
 }
 
+/** The tabs, in the order they are opened once at startup (Today last, so the app ends where it began). */
+const WARM_UP = ['/history', '/recurring', '/loans', '/'] as const;
+const WARM_STEP_MS = 170;
+
 export default function AppTabs() {
   const theme = useTheme();
   const isGlass = useIsGlass();
+  const router = useRouter();
+
+  // A tab is only built the first time it is opened, which shows as a jump on that first visit. So at
+  // startup each tab is opened once, one after the other, under a cover that matches the screen
+  // (the splash is still lifting away over it), and the app ends back on Today.
+  const [warming, setWarming] = useState(true);
+  useEffect(() => {
+    let step = 0;
+    let done: ReturnType<typeof setTimeout> | undefined;
+    const timer = setInterval(() => {
+      router.navigate(WARM_UP[step]);
+      step += 1;
+      if (step === WARM_UP.length) {
+        clearInterval(timer);
+        done = setTimeout(() => setWarming(false), WARM_STEP_MS);
+      }
+    }, WARM_STEP_MS);
+    return () => {
+      clearInterval(timer);
+      clearTimeout(done);
+    };
+  }, [router]);
   const now = useNow();
   const { recurring } = useExpenses();
   // Items due today are logged the moment the app opens, so this is really tomorrow through day 3.
@@ -203,12 +230,20 @@ export default function AppTabs() {
           </TabTrigger>
         </GlassBar>
       </TabList>
+      {warming ? (
+        <Animated.View
+          exiting={FadeOut.duration(220)}
+          style={[StyleSheet.absoluteFill, styles.cover, { backgroundColor: theme.background }]}
+        />
+      ) : null}
     </Tabs>
   );
 }
 
 const styles = StyleSheet.create({
   slot: { flex: 1 },
+  // Over the screens and the bar while the tabs are being opened once each, under the splash.
+  cover: { zIndex: 100 },
   bar: {
     position: 'absolute',
     left: 0,
